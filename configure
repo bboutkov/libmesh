@@ -43123,7 +43123,7 @@ $as_echo "<<< Configuring library with MetaPhysicL support >>>" >&6; }
 
 
 
-if (test $enablenanoflann = yes); then
+if (test $enablemetaphysicl = yes); then
   libmesh_contrib_INCLUDES="$METAPHYSICL_INCLUDE $libmesh_contrib_INCLUDES"
 fi
  if test x$enablemetaphysicl = xyes; then
