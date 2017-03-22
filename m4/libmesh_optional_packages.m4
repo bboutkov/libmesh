@@ -641,7 +641,7 @@ AC_CONFIG_FILES([contrib/nanoflann/Makefile])
 # MetaPhysicL -- enabled by default
 # -------------------------------------------------------------
 CONFIGURE_METAPHYSICL
-if (test $enablenanoflann = yes); then
+if (test $enablemetaphysicl = yes); then
   libmesh_contrib_INCLUDES="$METAPHYSICL_INCLUDE $libmesh_contrib_INCLUDES"
 fi
 AM_CONDITIONAL(LIBMESH_ENABLE_METAPHYSICL, test x$enablemetaphysicl = xyes)
