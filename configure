@@ -1287,7 +1287,8 @@ VTK_DIR
 HDF5_DIR
 YACC
 YFLAGS'
-ac_subdirs_all='contrib/netcdf/v4'
+ac_subdirs_all='contrib/netcdf/v4
+contrib/metaphysicl/0.2.0'
 
 # Initialize some variables set by options.
 ac_init_help=
@@ -43099,7 +43100,7 @@ if test "${enable_metaphysicl+set}" = set; then :
                   *)  as_fn_error $? "bad value ${enableval} for --enable-metaphysicl" "$LINENO" 5 ;;
                 esac
 else
-  enablemetaphysicl=$enableoptional
+  enablemetaphysicl=$enablenested
 fi
 
 
@@ -43107,12 +43108,14 @@ fi
   # to guess where it might be installed.  This needs to be replaced
   # someday with an option to include an external version instead.
   if (test $enablemetaphysicl = yes); then
-     METAPHYSICL_INCLUDE="-I\$(top_srcdir)/contrib/metaphysicl/include"
+     METAPHYSICL_INCLUDE="-I\$(top_srcdir)/contrib/metaphysicl/0.2.0/include"
 
 $as_echo "#define HAVE_METAPHYSICL 1" >>confdefs.h
 
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: <<< Configuring library with MetaPhysicL support >>>" >&5
 $as_echo "<<< Configuring library with MetaPhysicL support >>>" >&6; }
+     subdirs="$subdirs contrib/metaphysicl/0.2.0"
+
   else
      METAPHYSICL_INCLUDE=""
      enablemetaphysicl=no
