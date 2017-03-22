@@ -617,17 +617,17 @@ BUILT_SOURCES = auto_ptr.h default_coupling.h dirichlet_boundaries.h \
 	dg_fem_context.h diff_context.h diff_system.h eigen_system.h \
 	elem_assembly.h equation_systems.h explicit_system.h \
 	fem_context.h fem_system.h frequency_system.h \
-	implicit_system.h linear_implicit_system.h newmark_system.h \
-	nonlinear_implicit_system.h optimization_system.h \
-	parameter_accessor.h parameter_multiaccessor.h \
-	parameter_multipointer.h parameter_pointer.h \
-	parameter_vector.h qoi_set.h sensitivity_data.h \
-	steady_system.h system.h system_norm.h system_subset.h \
-	system_subset_by_subdomain.h transient_system.h \
-	compare_types.h error_vector.h hashword.h ignore_warnings.h \
-	libmesh_nullptr.h location_maps.h mapvector.h \
-	null_output_iterator.h number_lookups.h ostream_proxy.h \
-	parameters.h perf_log.h perfmon.h plt_loader.h \
+	generic_projector.h implicit_system.h linear_implicit_system.h \
+	newmark_system.h nonlinear_implicit_system.h \
+	optimization_system.h parameter_accessor.h \
+	parameter_multiaccessor.h parameter_multipointer.h \
+	parameter_pointer.h parameter_vector.h qoi_set.h \
+	sensitivity_data.h steady_system.h system.h system_norm.h \
+	system_subset.h system_subset_by_subdomain.h \
+	transient_system.h compare_types.h error_vector.h hashword.h \
+	ignore_warnings.h libmesh_nullptr.h location_maps.h \
+	mapvector.h null_output_iterator.h number_lookups.h \
+	ostream_proxy.h parameters.h perf_log.h perfmon.h plt_loader.h \
 	point_locator_base.h point_locator_tree.h pool_allocator.h \
 	restore_warnings.h safe_bool.h statistics.h string_to_enum.h \
 	timestamp.h topology_map.h tree.h tree_base.h tree_node.h \
@@ -1992,6 +1992,9 @@ fem_system.h: $(top_srcdir)/include/systems/fem_system.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 frequency_system.h: $(top_srcdir)/include/systems/frequency_system.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+generic_projector.h: $(top_srcdir)/include/systems/generic_projector.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 implicit_system.h: $(top_srcdir)/include/systems/implicit_system.h
