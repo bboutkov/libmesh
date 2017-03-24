@@ -816,7 +816,7 @@ void FEMContext::point_value(unsigned int var,
   UniquePtr<FEGenericBase<OutputShape> > fe_new =
     this->build_new_fe( fe, p, tolerance );
 
-  // Get the values of the shape function derivatives
+  // Get the values of the shape functions
   const std::vector<std::vector<OutputShape> > &  phi = fe_new->get_phi();
 
   u = 0.;
