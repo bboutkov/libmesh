@@ -550,7 +550,7 @@ eval_at_point(const FEMContext & c,
   // Get finite element object
   FEGenericBase<Number> * fe = libmesh_nullptr;
   this->old_context.get_element_fe<Number>
-    (i, fe, this->get_elem_dim());
+    (i, fe, this->old_context.get_elem_dim());
 
   // Build a FE for calculating phi(p)
   UniquePtr<FEGenericBase<Number> > fe_new =
