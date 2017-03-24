@@ -979,6 +979,14 @@ public:
    */
   unsigned char edge;
 
+  /**
+   * Helper function to reduce some code duplication in the *_point_* methods.
+   */
+  template<typename OutputShape>
+  UniquePtr<FEGenericBase<OutputShape> > build_new_fe( const FEGenericBase<OutputShape> * fe,
+                                                       const Point & p,
+                                                       const Real tolerance = TOLERANCE) const;
+
 protected:
 
   /**
@@ -990,14 +998,6 @@ protected:
    * Data with which to do algebra reinitialization
    */
   const NumericVector<Number> * _custom_solution;
-
-  /**
-   * Helper function to reduce some code duplication in the *_point_* methods.
-   */
-  template<typename OutputShape>
-  UniquePtr<FEGenericBase<OutputShape> > build_new_fe( const FEGenericBase<OutputShape> * fe,
-                                                       const Point & p,
-                                                       const Real tolerance = TOLERANCE) const;
 
   /**
    * Helper function to promote accessor usage
