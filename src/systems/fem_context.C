@@ -1593,7 +1593,7 @@ void FEMContext::pre_fe_reinit(const System & sys, const Elem * e)
           (static_cast<Elem*>(libmesh_nullptr), this->get_dof_indices());
     }
 #ifdef LIBMESH_ENABLE_AMR
-  else if (algebraic_type() == OLD)
+  else if (algebraic_type() == OLD || algebraic_type() == OLD_GRID)
     {
       // Initialize the per-element data for elem.
       if (this->has_elem())
@@ -1610,7 +1610,8 @@ void FEMContext::pre_fe_reinit(const System & sys, const Elem * e)
   const std::size_t n_qoi = sys.qoi.size();
 
   if (this->algebraic_type() != NONE &&
-      this->algebraic_type() != DOFS_ONLY)
+      this->algebraic_type() != DOFS_ONLY &&
+      this->algebraic_type() != OLD_GRID)
     {
       // This also resizes elem_solution
       if (_custom_solution == libmesh_nullptr)
@@ -1668,7 +1669,7 @@ void FEMContext::pre_fe_reinit(const System & sys, const Elem * e)
                 (static_cast<Elem*>(libmesh_nullptr), this->get_dof_indices(i), i);
           }
 #ifdef LIBMESH_ENABLE_AMR
-        else if (algebraic_type() == OLD)
+        else if (algebraic_type() == OLD || algebraic_type() == OLD_GRID)
           {
             if (this->has_elem())
               sys.get_dof_map().old_dof_indices (&(this->get_elem()), this->get_dof_indices(i), i);
@@ -1680,7 +1681,8 @@ void FEMContext::pre_fe_reinit(const System & sys, const Elem * e)
 #endif // LIBMESH_ENABLE_AMR
 
         if (this->algebraic_type() != NONE &&
-            this->algebraic_type() != DOFS_ONLY)
+            this->algebraic_type() != DOFS_ONLY &&
+            this->algebraic_type() != OLD_GRID)
           {
             const unsigned int n_dofs_var = cast_int<unsigned int>
               (this->get_dof_indices(i).size());
@@ -1746,12 +1748,13 @@ void FEMContext::pre_fe_reinit(const System & sys, const Elem * e)
 
     if (this->algebraic_type() != NONE &&
         this->algebraic_type() != DOFS_ONLY &&
-        this->algebraic_type() != OLD)
+        this->algebraic_type() != OLD &&
+        this->algebraic_type() != OLD_GRID)
       libmesh_assert_equal_to (sub_dofs, n_dofs);
   }
-
   // Now do the localization for the user requested vectors
-  if (this->algebraic_type() != NONE)
+  if (this->algebraic_type() != NONE &&
+      this->algebraic_type() != OLD_GRID)
     {
       DiffContext::localized_vectors_iterator localized_vec_it = this->_localized_vectors.begin();
       const DiffContext::localized_vectors_iterator localized_vec_end = this->_localized_vectors.end();

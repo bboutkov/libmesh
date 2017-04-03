@@ -35,7 +35,7 @@ namespace libMesh
 {
 // From the perspective of libMesh gradient vectors, a DSNA is a
 // scalar component
-template <typename T, typename I>
+  template <typename T, typename I>
 struct ScalarTraits<MetaPhysicL::DynamicSparseNumberArray<T,I> >
 {
   static const bool value = true;
@@ -443,13 +443,13 @@ public:
   OldSolutionCoefs(const libMesh::System & sys_in) :
     OldSolutionBase<Output, point_output>(sys_in)
   {
-    this->old_context.set_algebraic_type(FEMContext::DOFS_ONLY);
+    this->old_context.set_algebraic_type(FEMContext::OLD_GRID);
   }
 
   OldSolutionCoefs(const OldSolutionCoefs & in) :
     OldSolutionBase<Output, point_output>(in.sys)
   {
-    this->old_context.set_algebraic_type(FEMContext::DOFS_ONLY);
+    this->old_context.set_algebraic_type(FEMContext::OLD_GRID);
   }
 
   DSNA eval_at_node (const FEMContext & c,

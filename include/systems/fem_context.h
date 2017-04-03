@@ -932,7 +932,8 @@ public:
                        DOFS_ONLY, // Reinitialize dof_indices, not
                                   // algebraic structures
                        CURRENT,   // Use dof_indices, current solution
-                       OLD };     // Use old_dof_indices, custom solution
+                       OLD,       // Use old_dof_indices, custom solution
+                       OLD_GRID}; // Use old_dof_indices, no solution (multigrid_purposes)
 
   /**
    * Setting which determines whether to initialize algebraic

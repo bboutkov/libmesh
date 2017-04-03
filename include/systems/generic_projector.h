@@ -285,6 +285,7 @@ protected:
   {
     LOG_SCOPE ("check_old_context(c,p)", "OldSolutionBase");
     const Elem & elem = c.get_elem();
+
     if (last_elem != &elem)
       {
         if (elem.refinement_flag() == Elem::JUST_REFINED)
