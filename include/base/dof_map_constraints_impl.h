@@ -64,162 +64,83 @@ namespace libMesh
 
 #ifdef LIBMESH_ENABLE_CONSTRAINTS
 
-void DofMap::constrain_element_matrix (DenseMatrix<Number> & matrix,
-                                       std::vector<dof_id_type> & elem_dofs,
-                                       bool asymmetric_constraint_rows) const
-{
-  libmesh_assert_equal_to (elem_dofs.size(), matrix.m());
-  libmesh_assert_equal_to (elem_dofs.size(), matrix.n());
 
-  // check for easy return
-  if (this->_dof_constraints.empty())
-    return;
-
-  // The constrained matrix is built up as C^T K C.
-  DenseMatrix<Number> C;
+  template <typename MatType>
+    DofMap::constrain_element_matrix (MatType & matrix,
+                                      std::vector<dof_id_type> & elem_dofs,
+                                      bool asymmetric_constraint_rows) const{}
 
 
-  this->build_constraint_matrix (C, elem_dofs);
-
-  LOG_SCOPE("constrain_elem_matrix()", "DofMap");
-
-  // It is possible that the matrix is not constrained at all.
-  if ((C.m() == matrix.m()) &&
-      (C.n() == elem_dofs.size())) // It the matrix is constrained
+  //helper specialization for the common (nonDSNA) case
+  template <> void
+    DofMap::constrain_element_matrix<DenseMatrix<Number>> (DenseMatrix<Number> & matrix,
+                                                           std::vector<dof_id_type> & elem_dofs,
+                                                           bool asymmetric_constraint_rows) const
     {
-      // Compute the matrix-matrix-matrix product C^T K C
-      matrix.left_multiply_transpose  (C);
-      matrix.right_multiply (C);
+      libmesh_assert_equal_to (elem_dofs.size(), matrix.m());
+      libmesh_assert_equal_to (elem_dofs.size(), matrix.n());
+
+      // check for easy return
+      if (this->_dof_constraints.empty())
+        return;
+
+      // The constrained matrix is built up as C^T K C.
+      DenseMatrix<Number> C;
 
 
-      libmesh_assert_equal_to (matrix.m(), matrix.n());
-      libmesh_assert_equal_to (matrix.m(), elem_dofs.size());
-      libmesh_assert_equal_to (matrix.n(), elem_dofs.size());
+      this->build_constraint_matrix (C, elem_dofs);
+
+      LOG_SCOPE("constrain_elem_matrix()", "DofMap");
+
+      // It is possible that the matrix is not constrained at all.
+      if ((C.m() == matrix.m()) &&
+          (C.n() == elem_dofs.size())) // It the matrix is constrained
+        {
+          // Compute the matrix-matrix-matrix product C^T K C
+          matrix.left_multiply_transpose  (C);
+          matrix.right_multiply (C);
 
 
-      for (std::size_t i=0; i<elem_dofs.size(); i++)
-        // If the DOF is constrained
-        if (this->is_constrained_dof(elem_dofs[i]))
-          {
-            for (unsigned int j=0; j<matrix.n(); j++)
-              matrix(i,j) = 0.;
+          libmesh_assert_equal_to (matrix.m(), matrix.n());
+          libmesh_assert_equal_to (matrix.m(), elem_dofs.size());
+          libmesh_assert_equal_to (matrix.n(), elem_dofs.size());
 
-            matrix(i,i) = 1.;
 
-            if (asymmetric_constraint_rows)
+          for (std::size_t i=0; i<elem_dofs.size(); i++)
+            // If the DOF is constrained
+            if (this->is_constrained_dof(elem_dofs[i]))
               {
-                DofConstraints::const_iterator
-                  pos = _dof_constraints.find(elem_dofs[i]);
-
-                libmesh_assert (pos != _dof_constraints.end());
-
-                const DofConstraintRow & constraint_row = pos->second;
-
-                // This is an overzealous assertion in the presence of
-                // heterogenous constraints: we now can constrain "u_i = c"
-                // with no other u_j terms involved.
-                //
-                // libmesh_assert (!constraint_row.empty());
-
-                for (DofConstraintRow::const_iterator
-                       it=constraint_row.begin(); it != constraint_row.end();
-                     ++it)
-                  for (std::size_t j=0; j<elem_dofs.size(); j++)
-                    if (elem_dofs[j] == it->first)
-                      matrix(i,j) = -it->second;
-              }
-          }
-    } // end if is constrained...
-}
-
-
-void DofMap::constrain_element_matrix (DenseMatrix<Number> & matrix,
-                                       std::vector<dof_id_type> & row_dofs,
-                                       std::vector<dof_id_type> & col_dofs,
-                                       bool asymmetric_constraint_rows) const
-{
-  libmesh_assert_equal_to (row_dofs.size(), matrix.m());
-  libmesh_assert_equal_to (col_dofs.size(), matrix.n());
-
-  // check for easy return
-  if (this->_dof_constraints.empty())
-    return;
-
-  // The constrained matrix is built up as R^T K C.
-  DenseMatrix<Number> R;
-  DenseMatrix<Number> C;
-
-  // Safeguard against the user passing us the same
-  // object for row_dofs and col_dofs.  If that is done
-  // the calls to build_matrix would fail
-  std::vector<dof_id_type> orig_row_dofs(row_dofs);
-  std::vector<dof_id_type> orig_col_dofs(col_dofs);
-
-  this->build_constraint_matrix (R, orig_row_dofs);
-  this->build_constraint_matrix (C, orig_col_dofs);
-
-  LOG_SCOPE("constrain_elem_matrix()", "DofMap");
-
-  row_dofs = orig_row_dofs;
-  col_dofs = orig_col_dofs;
-
-  bool constraint_found = false;
-
-  // K_constrained = R^T K C
-
-  if ((R.m() == matrix.m()) &&
-      (R.n() == row_dofs.size()))
-    {
-      matrix.left_multiply_transpose  (R);
-      constraint_found = true;
-    }
-
-  if ((C.m() == matrix.n()) &&
-      (C.n() == col_dofs.size()))
-    {
-      matrix.right_multiply (C);
-      constraint_found = true;
-    }
-
-  // It is possible that the matrix is not constrained at all.
-  if (constraint_found)
-    {
-      libmesh_assert_equal_to (matrix.m(), row_dofs.size());
-      libmesh_assert_equal_to (matrix.n(), col_dofs.size());
-
-
-      for (std::size_t i=0; i<row_dofs.size(); i++)
-        if (this->is_constrained_dof(row_dofs[i]))
-          {
-            for (unsigned int j=0; j<matrix.n(); j++)
-              {
-                if (row_dofs[i] != col_dofs[j])
+                for (unsigned int j=0; j<matrix.n(); j++)
                   matrix(i,j) = 0.;
-                else // If the DOF is constrained
-                  matrix(i,j) = 1.;
+
+                matrix(i,i) = 1.;
+
+                if (asymmetric_constraint_rows)
+                  {
+                    DofConstraints::const_iterator
+                      pos = _dof_constraints.find(elem_dofs[i]);
+
+                    libmesh_assert (pos != _dof_constraints.end());
+
+                    const DofConstraintRow & constraint_row = pos->second;
+
+                    // This is an overzealous assertion in the presence of
+                    // heterogenous constraints: we now can constrain "u_i = c"
+                    // with no other u_j terms involved.
+                    //
+                    // libmesh_assert (!constraint_row.empty());
+
+                    for (DofConstraintRow::const_iterator
+                           it=constraint_row.begin(); it != constraint_row.end();
+                         ++it)
+                      for (std::size_t j=0; j<elem_dofs.size(); j++)
+                        if (elem_dofs[j] == it->first)
+                          matrix(i,j) = -it->second;
+                  }
               }
+        } // end if is constrained...
+    }
 
-            if (asymmetric_constraint_rows)
-              {
-                DofConstraints::const_iterator
-                  pos = _dof_constraints.find(row_dofs[i]);
-
-                libmesh_assert (pos != _dof_constraints.end());
-
-                const DofConstraintRow & constraint_row = pos->second;
-
-                libmesh_assert (!constraint_row.empty());
-
-                for (DofConstraintRow::const_iterator
-                       it=constraint_row.begin(); it != constraint_row.end();
-                     ++it)
-                  for (std::size_t j=0; j<col_dofs.size(); j++)
-                    if (col_dofs[j] == it->first)
-                      matrix(i,j) = -it->second;
-              }
-          }
-    } // end if is constrained...
-}
 
 #endif // LIBMESH_ENABLE_CONSTRAINTS
 
