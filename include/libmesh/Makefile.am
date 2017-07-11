@@ -10,6 +10,7 @@ BUILT_SOURCES = \
         default_coupling.h \
         dirichlet_boundaries.h \
         dof_map.h \
+        dof_map_constraints_impl.h \
         dof_object.h \
         factory.h \
         getpot.h \
@@ -542,6 +543,9 @@ dirichlet_boundaries.h: $(top_srcdir)/include/base/dirichlet_boundaries.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 dof_map.h: $(top_srcdir)/include/base/dof_map.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+dof_map_constraints_impl.h: $(top_srcdir)/include/base/dof_map_constraints_impl.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 dof_object.h: $(top_srcdir)/include/base/dof_object.h
