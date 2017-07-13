@@ -64,6 +64,7 @@
 // Define the DofMap, which handles degree of freedom
 // indexing.
 #include "libmesh/dof_map.h"
+#include "libmesh/dof_map_constraints_impl.h"
 
 // The definition of a vertex associated with a Mesh.
 #include "libmesh/node.h"
@@ -476,7 +477,7 @@ void assemble_wave(EquationSystems & es,
 
       // If this assembly program were to be used on an adaptive mesh,
       // we would have to apply any hanging node constraint equations
-      dof_map.constrain_element_matrix(Ke, dof_indices);
+      dof_map.constrain_element_matrix(Ke, dof_indices, true);
 
       system.matrix->add_matrix (Ke, dof_indices);
     } // end of element loop

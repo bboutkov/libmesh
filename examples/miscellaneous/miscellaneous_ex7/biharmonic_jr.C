@@ -473,7 +473,7 @@ void Biharmonic::JR::residual_and_jacobian(const NumericVector<Number> & u,
       if (J)
         {
           // If the mesh has hanging nodes (e.g., as a result of refinement), those need to be constrained.
-          dof_map.constrain_element_matrix(Je, dof_indices);
+          dof_map.constrain_element_matrix(Je, dof_indices, true);
           J->add_matrix(Je, dof_indices);
         }
     } // for el

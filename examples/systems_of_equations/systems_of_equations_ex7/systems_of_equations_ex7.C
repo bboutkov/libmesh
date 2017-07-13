@@ -258,7 +258,7 @@ public:
                 }
           }
 
-        dof_map.constrain_element_matrix (Ke, dof_indices);
+        dof_map.constrain_element_matrix (Ke, dof_indices, true);
         jacobian.add_matrix (Ke, dof_indices);
       }
   }

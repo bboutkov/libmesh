@@ -588,7 +588,7 @@ void LaplaceYoung::jacobian (const NumericVector<Number> & soln,
                                   );
         }
 
-      dof_map.constrain_element_matrix (Ke, dof_indices);
+      dof_map.constrain_element_matrix (Ke, dof_indices, true);
 
       // Add the element matrix to the system Jacobian.
       jacobian.add_matrix (Ke, dof_indices);
