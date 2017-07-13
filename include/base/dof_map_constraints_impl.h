@@ -65,10 +65,13 @@ namespace libMesh
 #ifdef LIBMESH_ENABLE_CONSTRAINTS
 
 
-  template <typename MatType>
+  template <typename MatType> void
     DofMap::constrain_element_matrix (MatType & matrix,
                                       std::vector<dof_id_type> & elem_dofs,
-                                      bool asymmetric_constraint_rows) const{}
+                                      bool asymmetric_constraint_rows) const
+    {
+      // what do we do here for non dense / sparse cases?
+    }
 
 
   //helper specialization for the common (nonDSNA) case

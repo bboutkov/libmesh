@@ -914,6 +914,15 @@ public:
   // increase API compatibility of user code with different library
   // builds.
 
+
+  /**
+   * Constrains the element matrix helper function. Templated on matrix Type
+   */
+  template <typename MatType> void
+    constrain_element_matrix (MatType & matrix,
+                                      std::vector<dof_id_type> & elem_dofs,
+                                      bool asymmetric_constraint_rows) const;
+
   /**
    * Constrains the element matrix.  This method requires the
    * element matrix to be square, in which case the elem_dofs
@@ -927,9 +936,9 @@ public:
    * which breaks matrix symmetry but makes inexact linear solver
    * solutions more likely to satisfy hanging node constraints.
    */
-  void constrain_element_matrix (DenseMatrix<Number> & matrix,
-                                 std::vector<dof_id_type> & elem_dofs,
-                                 bool asymmetric_constraint_rows = true) const;
+  //void constrain_element_matrix (DenseMatrix<Number> & matrix,
+  //                               std::vector<dof_id_type> & elem_dofs,
+  //                               bool asymmetric_constraint_rows = true) const;
 
   /**
    * Constrains the element matrix.  This method allows the
