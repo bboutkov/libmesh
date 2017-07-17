@@ -73,8 +73,77 @@ namespace libMesh
       // what do we do here for non dense / sparse cases?
     }
 
+  // helper specialization for the SparseMatrix DSNA case
+  template <> void
+    DofMap::constrain_element_matrix<SparseMatrix<Number>> (SparseMatrix<Number> & matrix,
+                                                           std::vector<dof_id_type> & elem_dofs,
+                                                           bool asymmetric_constraint_rows) const
+    {
+      libmesh_assert_equal_to (elem_dofs.size(), matrix.m());
+      libmesh_assert_equal_to (elem_dofs.size(), matrix.n());
 
-  //helper specialization for the common (nonDSNA) case
+      // check for easy return
+      if (this->_dof_constraints.empty())
+        return;
+
+      // The constrained matrix is built up as C^T K C.
+      DenseMatrix<Number> C;
+
+
+      this->build_constraint_matrix (C, elem_dofs);
+
+      LOG_SCOPE("constrain_elem_matrix()", "DofMap");
+
+      // It is possible that the matrix is not constrained at all.
+      if ((C.m() == matrix.m()) &&
+          (C.n() == elem_dofs.size())) // It the matrix is constrained
+        {
+          // Compute the matrix-matrix-matrix product C^T K C
+          matrix.left_multiply_transpose  (C);
+          matrix.right_multiply (C);
+
+
+          libmesh_assert_equal_to (matrix.m(), matrix.n());
+          libmesh_assert_equal_to (matrix.m(), elem_dofs.size());
+          libmesh_assert_equal_to (matrix.n(), elem_dofs.size());
+
+
+          for (std::size_t i=0; i<elem_dofs.size(); i++)
+            // If the DOF is constrained
+            if (this->is_constrained_dof(elem_dofs[i]))
+              {
+                for (unsigned int j=0; j<matrix.n(); j++)
+                  matrix.set(i,j,0.);
+
+                matrix.set(i,i,1.);
+
+                if (asymmetric_constraint_rows)
+                  {
+                    DofConstraints::const_iterator
+                      pos = _dof_constraints.find(elem_dofs[i]);
+
+                    libmesh_assert (pos != _dof_constraints.end());
+
+                    const DofConstraintRow & constraint_row = pos->second;
+
+                    // This is an overzealous assertion in the presence of
+                    // heterogenous constraints: we now can constrain "u_i = c"
+                    // with no other u_j terms involved.
+                    //
+                    // libmesh_assert (!constraint_row.empty());
+
+                    for (DofConstraintRow::const_iterator
+                           it=constraint_row.begin(); it != constraint_row.end();
+                         ++it)
+                      for (std::size_t j=0; j<elem_dofs.size(); j++)
+                        if (elem_dofs[j] == it->first)
+                          matrix(i,j) = -it->second;
+                  }
+              }
+        } // end if is constrained...
+    }
+
+  // helper specialization for the common (nonDSNA) case
   template <> void
     DofMap::constrain_element_matrix<DenseMatrix<Number>> (DenseMatrix<Number> & matrix,
                                                            std::vector<dof_id_type> & elem_dofs,
