@@ -107,7 +107,7 @@ namespace libMesh
           libmesh_assert_equal_to (matrix.m(), elem_dofs.size());
           libmesh_assert_equal_to (matrix.n(), elem_dofs.size());
 
-
+          // TODO BB: mat.set will be slowwww do these operations need to be batched
           for (std::size_t i=0; i<elem_dofs.size(); i++)
             // If the DOF is constrained
             if (this->is_constrained_dof(elem_dofs[i]))
@@ -132,12 +132,16 @@ namespace libMesh
                     //
                     // libmesh_assert (!constraint_row.empty());
 
+                    // TODO BB: mat.set and () will be slowwww do these operations need to be batched
                     for (DofConstraintRow::const_iterator
                            it=constraint_row.begin(); it != constraint_row.end();
                          ++it)
                       for (std::size_t j=0; j<elem_dofs.size(); j++)
                         if (elem_dofs[j] == it->first)
-                          matrix(i,j) = -it->second;
+                          {
+                            auto tmp = matrix(i,j);
+                            matrix.set(i,j,tmp - it->second);
+                          }
                   }
               }
         } // end if is constrained...
