@@ -114,7 +114,7 @@ private:
 
 
   //! Init all the n_mesh_level dependent data structures
-  void init_dm_data(unsigned int n_levels);
+  void init_dm_data(unsigned int n_levels,  const Parallel::Communicator & comm);
 
   //! Get reference to DM for the given mesh level
   /**
