@@ -153,6 +153,10 @@ void PetscDMWrapper::clear()
   _dms.clear();
   _sections.clear();
   _star_forests.clear();
+  _ctx_vec.clear();
+  _pmtx_vec.clear();
+  _vec_vec.clear();
+
 }
 
 void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
