@@ -22,10 +22,10 @@ void HeatSystem::init_data ()
   const unsigned int dim = this->get_mesh().mesh_dimension();
 
   // Add dirichlet boundaries on all but the boundary element side
-  const boundary_id_type all_ids[6] = {0, 1, 2, 3, 4, 5};
+    const boundary_id_type all_ids[4] = {0, 1, 2, 3};
   std::set<boundary_id_type> nonyplus_bdys(all_ids, all_ids+(dim*2));
-  const boundary_id_type yplus_id = (dim == 3) ? 3 : 2;
-  nonyplus_bdys.erase(yplus_id);
+  //  const boundary_id_type yplus_id = (dim == 3) ? 3 : 2;
+  // nonyplus_bdys.erase(yplus_id);
 
   std::vector<unsigned int> T_only(1, T_var);
   ZeroFunction<Number> zero;
@@ -33,13 +33,11 @@ void HeatSystem::init_data ()
   // Most DirichletBoundary users will want to supply a "locally
   // indexed" functor
   this->get_dof_map().add_dirichlet_boundary
-    (DirichletBoundary (nonyplus_bdys, T_only, zero, LOCAL_VARIABLE_ORDER));
+   (DirichletBoundary (nonyplus_bdys, T_only, zero, LOCAL_VARIABLE_ORDER));
 
   // Do the parent's initialization after variables are defined
   FEMSystem::init_data();
 
-  // The temperature is evolving, with a first-order time derivative
-  this->time_evolving(T_var, 1);
 }
 
 
