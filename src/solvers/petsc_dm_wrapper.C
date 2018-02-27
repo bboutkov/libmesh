@@ -184,17 +184,21 @@ void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
   if (n_levels >= 1)
     n_levels += 1;
 
-  // TODO: How many MG levels did the user request?
-  // Create a GetPot object to parse the command line
-  /*
-  int requested_levels = 0;
-  GetPot command_line (argc, argv);
-  if (command_line.search("-pc_mg_levels"))
-    requested_levels = command_line.next(0);
-  else
-    libmesh_error_msg("ERROR: -pc_mg_levels not specified!");
-  */
+  // How many MG levels did the user request?
+  int usr_requested_mg_lvls = 0;
+  usr_requested_mg_lvls = command_line_next("-pc_mg_levels", usr_requested_mg_lvls);
 
+  // Only construct however many levels were requested if something was actually requested
+  if ( usr_requested_mg_lvls != 0 )
+    {
+      // Dont request more than avail num levels, require at least 2 levels
+      libmesh_assert_less_equal( usr_requested_mg_lvls, n_levels );
+      libmesh_assert( usr_requested_mg_lvls > 1 );
+
+      n_levels = usr_requested_mg_lvls;
+    }
+  else
+    libmesh_error_msg("ERROR: -pc_mg_levels not specified");
 
   // Init data structures: data[0] ~ coarse grid, data[n_levels-1] ~ fine grid
   this->init_dm_data(n_levels, system.comm());
