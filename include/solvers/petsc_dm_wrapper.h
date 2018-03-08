@@ -88,7 +88,7 @@ public:
 private:
 
   //! Vector of DMs for all grid levels
-  std::vector<std::unique_ptr<DM>> _dms;
+  std::vector<DM *> _dms;
 
   //! Vector of PETScSections for all grid levels
   std::vector<std::unique_ptr<PetscSection>> _sections;
@@ -97,7 +97,7 @@ private:
   std::vector<std::unique_ptr<PetscSF>> _star_forests;
 
   //! Vector of projection matrixes for all grid levels
-  std::vector< std::unique_ptr< PetscMatrix< Real> > > _pmtx_vec;
+  std::vector< PetscMatrix< Real> * > _pmtx_vec;
 
   //! Vector of internal PETSCDM context structs for all grid levels
   std::vector<std::unique_ptr<PetscDMContext> > _ctx_vec;
@@ -122,7 +122,7 @@ private:
    */
   DM & get_dm(unsigned int level)
     { libmesh_assert_less(level, _dms.size());
-    return *(_dms[level].get()); }
+    return *(_dms[level]); }
 
   //! Get reference to PetscSection for the given mesh level
   /**

@@ -151,16 +151,19 @@ void PetscDMWrapper::clear()
   // This will also Destroy the attached PetscSection and PetscSF as well
   // Destroy doesn't free the memory, but just resets points internally
   // in the struct, so we'd still need to wipe out the memory on our side
+
   for( auto dm_it = _dms.begin(); dm_it < _dms.end(); ++dm_it )
-    DMDestroy( dm_it->get() );
+    DMDestroy( *dm_it );
 
   _dms.clear();
   _sections.clear();
   _star_forests.clear();
-  _ctx_vec.clear();
-  _pmtx_vec.clear();
-  _vec_vec.clear();
 
+  //_ctx_vec.clear();
+  //_pmtx_vec.clear();
+  //_vec_vec.clear();
+
+  out << "clearing dmwrapper...";
 }
 
 void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
@@ -276,17 +279,17 @@ void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
       if ( i == 1 ) // were at the coarsest mesh
         {
           (*_ctx_vec[i-1]).coarser_dm = NULL;
-          (*_ctx_vec[i-1]).finer_dm   = _dms[1].get();
+          (*_ctx_vec[i-1]).finer_dm   = _dms[1];
         }
       else if( i == n_levels ) // were at the finest mesh
         {
-          (*_ctx_vec[i-1]).coarser_dm = _dms[_dms.size() - 2].get();
+          (*_ctx_vec[i-1]).coarser_dm = _dms[_dms.size() - 2];
           (*_ctx_vec[i-1]).finer_dm   = NULL;
         }
       else // were in the middle of the heirarchy
         {
-          (*_ctx_vec[i-1]).coarser_dm = _dms[i-2].get();
-          (*_ctx_vec[i-1]).finer_dm   = _dms[i].get();
+          (*_ctx_vec[i-1]).coarser_dm = _dms[i-2];
+          (*_ctx_vec[i-1]).finer_dm   = _dms[i];
         }
 
       // Create and attach a sized vector to the current ctx
@@ -323,7 +326,7 @@ void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
           unsigned int ndofs_f = _mesh_dof_sizes[i];
 
           // Create the Interpolation matrix and set its pointer
-          _ctx_vec[i-1]->K_interp_ptr = _pmtx_vec[i-1].get();
+          _ctx_vec[i-1]->K_interp_ptr = _pmtx_vec[i-1];
 
           unsigned int ndofs_local = system.get_dof_map().n_dofs_on_processor(system.processor_id());
           unsigned int ndofs_old_first = system.get_dof_map().first_old_dof(system.processor_id());
@@ -649,12 +652,11 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
 
   for( unsigned int i = 0; i < n_levels; i++ )
     {
-      _dms[i] = libmesh_make_unique<DM>();
+      _dms[i] = new DM;
       _sections[i] = libmesh_make_unique<PetscSection>();
       _star_forests[i] = libmesh_make_unique<PetscSF>();
       _ctx_vec[i] = libmesh_make_unique<PetscDMContext>();
-      _pmtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>( comm );
-
+      _pmtx_vec[i] = new PetscMatrix<Real>(comm);
     }
 }
 
