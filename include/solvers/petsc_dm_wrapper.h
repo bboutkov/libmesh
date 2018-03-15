@@ -80,7 +80,7 @@ public:
 
   ~PetscDMWrapper();
 
-  void init_and_attach_petscdm(const System & system, SNES & snes);
+  void init_and_attach_petscdm(System & system, SNES & snes);
 
   //! Destroys and clears all build DM-related data
   void clear();

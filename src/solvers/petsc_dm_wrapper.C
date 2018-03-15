@@ -166,7 +166,7 @@ void PetscDMWrapper::clear()
   out << "clearing dmwrapper...";
 }
 
-void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
+void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 {
   START_LOG ("init_and_attach_petscdm", "PetscDMWrapper");
 
@@ -313,6 +313,7 @@ void PetscDMWrapper::init_and_attach_petscdm(const System & system, SNES & snes)
   // DM structures created, now we need projection matrixes.
   // To prepare for projection creation go to second coarsest mesh so we can utilize
   // old_dof_indices information in the projection creation
+
   mesh_refinement.uniformly_refine(1);
   system.get_dof_map().distribute_dofs(mesh);;
   system.reinit_constraints();
@@ -596,7 +597,7 @@ void PetscDMWrapper::check_section_n_dofs_match( const System & system, PetscSec
   CHKERRABORT(system.comm().get(),ierr);
 
   // Count up the n_dofs for each point from the section
-  for( PetscInt p = pstart; p < pend+1; p++ )
+  for( PetscInt p = pstart; p < pend; p++ )
     {
       PetscInt n_dofs;
       ierr = PetscSectionGetDof(section,p,&n_dofs);CHKERRABORT(system.comm().get(),ierr);
@@ -658,6 +659,7 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
       _ctx_vec[i] = libmesh_make_unique<PetscDMContext>();
       _pmtx_vec[i] = new PetscMatrix<Real>(comm);
     }
+
 }
 
 } // end namespace libMesh
