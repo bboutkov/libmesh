@@ -38,6 +38,7 @@
 #include "libmesh/exodusII_io.h"
 #include "libmesh/kelly_error_estimator.h"
 #include "libmesh/mesh.h"
+#include "libmesh/parallel_mesh.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh_refinement.h"
 #include "libmesh/parsed_function.h"
@@ -91,7 +92,7 @@ int main (int argc, char ** argv)
 
   // Create a mesh, with dimension to be overridden later, distributed
   // across the default MPI communicator.
-  Mesh mesh(init.comm());
+  ParallelMesh mesh(init.comm());
 
   // And an object to refine it
   MeshRefinement mesh_refinement(mesh);
@@ -148,12 +149,6 @@ int main (int argc, char ** argv)
 
   // solve the steady solution
   system.solve();
-
-#ifdef LIBMESH_HAVE_EXODUS_API
-  ExodusII_IO(mesh).write_equation_systems
-    ("out.e", equation_systems);
-#endif // #ifdef LIBMESH_HAVE_EXODUS_API
-
 
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution
