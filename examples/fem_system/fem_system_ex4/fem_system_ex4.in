@@ -6,7 +6,7 @@ global_tolerance = 0.0
 
 
 # The coarse grid size from which to start multigrid prerefinement
-coarsegridsize = 20
+coarsegridsize = 35
 coarserefinements = 5
 
 # Turn this off to see the NewtonSolver chatter
