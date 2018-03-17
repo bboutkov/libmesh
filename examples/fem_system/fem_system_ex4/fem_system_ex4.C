@@ -108,6 +108,17 @@ int main (int argc, char ** argv)
          0., 1.,
          QUAD4);
     }
+  else if (dim == 3)
+    {
+      MeshTools::Generation::build_cube
+        (mesh,
+         coarsegridsize, coarsegridsize,coarsegridsize,
+         0., 1.,
+         0., 1.,
+         0., 1.,
+         //TET4);
+         HEX8);
+    }
 
   mesh_refinement.uniformly_refine(coarserefinements);
 
