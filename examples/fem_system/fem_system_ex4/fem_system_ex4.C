@@ -161,6 +161,15 @@ int main (int argc, char ** argv)
   // solve the steady solution
   system.solve();
 
+  mesh.allgather();
+
+#ifdef LIBMESH_HAVE_EXODUS_API
+  ExodusII_IO(mesh).write_equation_systems
+    ("out.e", equation_systems);
+#endif
+
+
+
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution
   ExactSolution exact_sol(equation_systems);
