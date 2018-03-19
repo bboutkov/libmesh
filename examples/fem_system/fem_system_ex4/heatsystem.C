@@ -22,7 +22,7 @@ void HeatSystem::init_data ()
   const unsigned int dim = this->get_mesh().mesh_dimension();
 
   // Add dirichlet boundaries on all but the boundary element side
-    const boundary_id_type all_ids[4] = {0, 1, 2, 3};
+  const boundary_id_type all_ids[6] = {0, 1, 2, 3, 4, 5};
   std::set<boundary_id_type> nonyplus_bdys(all_ids, all_ids+(dim*2));
   //  const boundary_id_type yplus_id = (dim == 3) ? 3 : 2;
   // nonyplus_bdys.erase(yplus_id);
