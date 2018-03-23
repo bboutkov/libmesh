@@ -161,7 +161,7 @@ int main (int argc, char ** argv)
   // solve the steady solution
   system.solve();
 
-  mesh.allgather();
+  mesh.gather_to_zero();
 
 #ifdef LIBMESH_HAVE_EXODUS_API
   ExodusII_IO(mesh).write_equation_systems
