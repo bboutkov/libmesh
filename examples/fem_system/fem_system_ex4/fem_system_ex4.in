@@ -6,14 +6,14 @@ global_tolerance = 0.0
 
 
 # The coarse grid size from which to start multigrid prerefinement
-coarsegridsize = 35
-coarserefinements = 5
+coarsegridsize = 2
+coarserefinements = 2
 
 # Turn this off to see the NewtonSolver chatter
 solver_quiet = false
 
 # Solve the 2D or 3D problem
-dimension = 2
+dimension = 3
 
 # Nonlinear solver tolerance
 relative_step_tolerance = 1e-7
