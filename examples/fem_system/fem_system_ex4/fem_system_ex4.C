@@ -35,14 +35,13 @@
 #include "libmesh/error_vector.h"
 #include "libmesh/exact_solution.h"
 #include "libmesh/getpot.h"
-#include "libmesh/gmv_io.h"
 #include "libmesh/exodusII_io.h"
-#include "libmesh/kelly_error_estimator.h"
 #include "libmesh/mesh.h"
+#include "libmesh/partitioner.h"
+#include "libmesh/parallel_mesh.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh_refinement.h"
 #include "libmesh/parsed_function.h"
-#include "libmesh/uniform_refinement_estimator.h"
 #include "libmesh/auto_ptr.h" // libmesh_make_unique
 #include "libmesh/enum_solver_package.h"
 #include "libmesh/enum_norm_type.h"
@@ -50,6 +49,7 @@
 // The systems and solvers we may use
 #include "heatsystem.h"
 #include "libmesh/diff_solver.h"
+#include "libmesh/petsc_diff_solver.h"
 #include "libmesh/euler_solver.h"
 #include "libmesh/steady_solver.h"
 
@@ -66,26 +66,12 @@ int main (int argc, char ** argv)
   libmesh_example_requires(libMesh::default_solver_package() != INVALID_SOLVER_PACKAGE,
                            "--enable-petsc, --enable-trilinos, or --enable-eigen");
 
-#ifndef LIBMESH_ENABLE_AMR
-  libmesh_example_requires(false, "--enable-amr");
-#else
-
-  // This doesn't converge with Eigen BICGSTAB for some reason...
-  libmesh_example_requires(libMesh::default_solver_package() != EIGEN_SOLVERS, "--enable-petsc");
-
-  // This doesn't converge without at least double precision
-  libmesh_example_requires(sizeof(Real) > 4, "--disable-singleprecision");
-
-  // Parse the input file
+ // Parse the input file
   GetPot infile("fem_system_ex4.in");
 
   // Read in parameters from the input file
-  const Real global_tolerance          = infile("global_tolerance", 0.);
-  const unsigned int nelem_target      = infile("n_elements", 400);
-  const Real deltat                    = infile("deltat", 0.005);
-  const unsigned int coarsegridsize    = infile("coarsegridsize", 20);
-  const unsigned int coarserefinements = infile("coarserefinements", 0);
-  const unsigned int max_adaptivesteps = infile("max_adaptivesteps", 10);
+  const unsigned int coarsegridsize    = infile("coarsegridsize", 25);
+  const unsigned int coarserefinements = infile("coarserefinements", 3);
   const unsigned int dim               = infile("dimension", 2);
 
   // Skip higher-dimensional examples on a lower-dimensional libMesh build
@@ -96,62 +82,35 @@ int main (int argc, char ** argv)
 
   // Create a mesh, with dimension to be overridden later, distributed
   // across the default MPI communicator.
-  Mesh mesh(init.comm());
+  ParallelMesh mesh(init.comm());
 
   // And an object to refine it
   MeshRefinement mesh_refinement(mesh);
-  mesh_refinement.coarsen_by_parents() = true;
-  mesh_refinement.absolute_global_tolerance() = global_tolerance;
-  mesh_refinement.nelem_target() = nelem_target;
-  mesh_refinement.refine_fraction() = 0.3;
-  mesh_refinement.coarsen_fraction() = 0.3;
-  mesh_refinement.coarsen_threshold() = 0.1;
 
   // Use the MeshTools::Generation mesh generator to create a uniform
-  // grid on the square or cube.  We crop the domain at y=2/3 to allow
-  // for a homogeneous Neumann BC in our benchmark there.
-  boundary_id_type bcid = 3; // +y in 3D
+  // grid on the square or cube.
   if (dim == 2)
     {
       MeshTools::Generation::build_square
         (mesh,
-         coarsegridsize,
-         coarsegridsize*2/3, // int arithmetic best we can do here
+         coarsegridsize, coarsegridsize,
          0., 1.,
-         0., 2./3.,
-         QUAD9);
-      bcid = 2; // +y in 2D
+         0., 1.,
+         QUAD4);
     }
   else if (dim == 3)
     {
       MeshTools::Generation::build_cube
         (mesh,
-         coarsegridsize,
-         coarsegridsize*2/3,
-         coarsegridsize,
+         coarsegridsize, coarsegridsize,coarsegridsize,
          0., 1.,
-         0., 2./3.,
          0., 1.,
-         HEX27);
+         0., 1.,
+         //TET4);
+         HEX8);
     }
 
-  {
-    // Add boundary elements corresponding to the +y boundary of our
-    // volume mesh
-    std::set<boundary_id_type> bcids;
-    bcids.insert(bcid);
-    mesh.get_boundary_info().add_elements(bcids, mesh);
-    mesh.prepare_for_use();
-  }
-
-  // To work around ExodusII file format limitations, we need elements
-  // of different dimensionality to belong to different subdomains.
-  // Our interior elements defaulted to subdomain id 0, so we'll set
-  // boundary elements to subdomain 1.
-  for (auto & elem : mesh.element_ptr_range())
-    if (elem->dim() < dim)
-      elem->subdomain_id() = 1;
-
+  mesh->partitioner() = NULL;
   mesh_refinement.uniformly_refine(coarserefinements);
 
   // Print information about the mesh to the screen.
@@ -170,138 +129,27 @@ int main (int argc, char ** argv)
   // Initialize the system
   equation_systems.init ();
 
-  // Set the time stepping options
-  system.deltat = deltat;
-
   // And the nonlinear solver options
+  system.get_time_solver().diff_solver() = libmesh_make_unique<PetscDiffSolver>(system);
   DiffSolver & solver = *(system.time_solver->diff_solver().get());
-  solver.quiet = infile("solver_quiet", true);
+  solver.quiet = infile("solver_quiet", false);
   solver.verbose = !solver.quiet;
-  solver.max_nonlinear_iterations = infile("max_nonlinear_iterations", 15);
+  solver.max_nonlinear_iterations = infile("max_nonlinear_iterations", 1);
   solver.relative_step_tolerance = infile("relative_step_tolerance", 1.e-3);
   solver.relative_residual_tolerance = infile("relative_residual_tolerance", 0.0);
   solver.absolute_residual_tolerance = infile("absolute_residual_tolerance", 0.0);
 
   // And the linear solver options
-  solver.max_linear_iterations = infile("max_linear_iterations", 50000);
+  solver.max_linear_iterations = infile("max_linear_iterations", 5);
   solver.initial_linear_tolerance = infile("initial_linear_tolerance", 1.e-3);
+
+  solver.init();
 
   // Print information about the system to the screen.
   equation_systems.print_info();
 
-  // Adaptively solve the steady solution
-  unsigned int a_step = 0;
-  for (; a_step != max_adaptivesteps; ++a_step)
-    {
-      system.solve();
-
-      system.postprocess();
-
-      ErrorVector error;
-
-      std::unique_ptr<ErrorEstimator> error_estimator;
-
-      // To solve to a tolerance in this problem we
-      // need a better estimator than Kelly
-      if (global_tolerance != 0.)
-        {
-          // We can't adapt to both a tolerance and a mesh
-          // size at once
-          libmesh_assert_equal_to (nelem_target, 0);
-
-          UniformRefinementEstimator * u =
-            new UniformRefinementEstimator;
-
-          // The lid-driven cavity problem isn't in H1, so
-          // lets estimate L2 error
-          u->error_norm = L2;
-
-          error_estimator.reset(u);
-        }
-      else
-        {
-          // If we aren't adapting to a tolerance we need a
-          // target mesh size
-          libmesh_assert_greater (nelem_target, 0);
-
-          // Kelly is a lousy estimator to use for a problem
-          // not in H1 - if we were doing more than a few
-          // timesteps we'd need to turn off or limit the
-          // maximum level of our adaptivity eventually
-          error_estimator.reset(new KellyErrorEstimator);
-        }
-
-      error_estimator->estimate_error(system, error);
-
-      // Print out status at each adaptive step.
-      Real global_error = error.l2_norm();
-      libMesh::out << "Adaptive step "
-                   << a_step
-                   << ": "
-                   << std::endl;
-
-      if (global_tolerance != 0.)
-        libMesh::out << "Global_error = "
-                     << global_error
-                     << std::endl;
-
-      if (global_tolerance != 0.)
-        libMesh::out << "Worst element error = "
-                     << error.maximum()
-                     << ", mean = "
-                     << error.mean()
-                     << std::endl;
-
-      if (global_tolerance != 0.)
-        {
-          // If we've reached our desired tolerance, we
-          // don't need any more adaptive steps
-          if (global_error < global_tolerance)
-            break;
-          mesh_refinement.flag_elements_by_error_tolerance(error);
-        }
-      else
-        {
-          // If flag_elements_by_nelem_target returns true, this
-          // should be our last adaptive step.
-          if (mesh_refinement.flag_elements_by_nelem_target(error))
-            {
-              mesh_refinement.refine_and_coarsen_elements();
-              equation_systems.reinit();
-              a_step = max_adaptivesteps;
-              break;
-            }
-        }
-
-      // Carry out the adaptive mesh refinement/coarsening
-      mesh_refinement.refine_and_coarsen_elements();
-      equation_systems.reinit();
-
-      libMesh::out << "Refined mesh to "
-                   << mesh.n_active_elem()
-                   << " active elements and "
-                   << equation_systems.n_active_dofs()
-                   << " active dofs."
-                   << std::endl;
-    }
-  // Do one last solve if necessary
-  if (a_step == max_adaptivesteps)
-    {
-      system.solve();
-
-      system.postprocess();
-    }
-
-
-#ifdef LIBMESH_HAVE_EXODUS_API
-  ExodusII_IO(mesh).write_equation_systems
-    ("out.e", equation_systems);
-#endif // #ifdef LIBMESH_HAVE_EXODUS_API
-
-#ifdef LIBMESH_HAVE_GMV
-  GMVIO(mesh).write_equation_systems
-    ("out.gmv", equation_systems);
-#endif // #ifdef LIBMESH_HAVE_GMV
+  // solve the steady solution
+  system.solve();
 
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution
@@ -320,8 +168,6 @@ int main (int argc, char ** argv)
   libmesh_assert_less(libmesh_real(err), 2e-3);
 
 #endif // #ifdef LIBMESH_HAVE_FPARSER
-
-#endif // #ifndef LIBMESH_ENABLE_AMR
 
   // All done.
   return 0;
