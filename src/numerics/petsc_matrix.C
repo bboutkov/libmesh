@@ -1204,6 +1204,11 @@ bool PetscMatrix<T>::closed() const
   return (assembled == PETSC_TRUE);
 }
 
+template <typename T>
+void PetscMatrix<T>::set_petsc_delete_mat(bool destroy)
+{
+  this->_destroy_mat_on_exit = destroy;
+}
 
 
 template <typename T>

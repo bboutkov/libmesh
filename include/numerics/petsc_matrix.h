@@ -217,6 +217,12 @@ public:
   virtual bool closed() const override;
 
   /**
+   * Default = true.
+   * If set to false, we dont delete Mat on destruction and allow PETSc to manage it.
+   */
+  virtual void set_petsc_delete_mat(bool destroy = true);
+
+  /**
    * Print the contents of the matrix to the screen with the PETSc
    * viewer. This function only allows printing to standard out since
    * we have limited ourselves to one PETSc implementation for
