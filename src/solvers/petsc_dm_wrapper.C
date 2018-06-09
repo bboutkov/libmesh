@@ -145,11 +145,14 @@ PetscDMWrapper::~PetscDMWrapper()
 
 void PetscDMWrapper::clear()
 {
-  // This will also Destroy the attached PetscSection and PetscSF as well
+  // This will also destroy the attached PetscSection and PetscSF as well.
   // Destroy doesn't free the memory, but just resets points internally
-  // in the struct, so we'd still need to wipe out the memory on our side
-  for( auto dm_it = _dms.begin(); dm_it < _dms.end(); ++dm_it )
-    DMDestroy( dm_it->get() );
+  // in the struct, so we'd still need to wipe out the memory on our side.
+  // PETSc destroys adjacent DM's so we just pass the coarsest one.
+  // Since PetscDMWrapper->clear() gets called in both DiffSolver->clear() and
+  // also in ~DiffSolver we check _dms size to avoid double deleting
+  if ( _dms.size() > 0 )
+    DMDestroy( _dms[0].get() );
 
   _dms.clear();
   _sections.clear();
