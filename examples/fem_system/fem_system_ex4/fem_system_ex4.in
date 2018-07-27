@@ -1,8 +1,8 @@
 # Input file to allow for modification of some multigrid related options
 
 # The coarse grid size from which to start multigrid prerefinement
-coarsegridsize = 25
-coarserefinements = 5
+coarsegridsize = 2
+coarserefinements = 1
 
 # Turn this off to see the NewtonSolver chatter
 solver_quiet = false
