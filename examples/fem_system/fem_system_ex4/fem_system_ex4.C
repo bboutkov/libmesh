@@ -73,6 +73,7 @@ int main (int argc, char ** argv)
   const unsigned int coarsegridsize    = infile("coarsegridsize", 25);
   const unsigned int coarserefinements = infile("coarserefinements", 3);
   const unsigned int dim               = infile("dimension", 2);
+  const std::string  mesh_name         = infile("mesh_name", "DIE!");
 
   // Skip higher-dimensional examples on a lower-dimensional libMesh build
   libmesh_example_requires(dim <= LIBMESH_DIM, "2D/3D support");
@@ -87,27 +88,36 @@ int main (int argc, char ** argv)
   // And an object to refine it
   MeshRefinement mesh_refinement(mesh);
 
-  // Use the MeshTools::Generation mesh generator to create a uniform
-  // grid on the square or cube.
-  if (dim == 2)
+  if (mesh_name.empty() || (mesh_name == "DIE!") )
     {
-      MeshTools::Generation::build_square
-        (mesh,
-         coarsegridsize, coarsegridsize,
-         0., 1.,
-         0., 1.,
-         QUAD4);
+      out << "Generating mesh.. " << std::endl;
+      // Use the MeshTools::Generation mesh generator to create a uniform
+      // grid on the square or cube.
+      if (dim == 2)
+        {
+          MeshTools::Generation::build_square
+            (mesh,
+             coarsegridsize, coarsegridsize,
+             0., 1.,
+             0., 1.,
+             QUAD4);
+        }
+      else if (dim == 3)
+        {
+          MeshTools::Generation::build_cube
+            (mesh,
+             coarsegridsize, coarsegridsize,coarsegridsize,
+             0., 1.,
+             0., 1.,
+             0., 1.,
+             //TET4);
+             HEX8);
+        }
     }
-  else if (dim == 3)
+  else
     {
-      MeshTools::Generation::build_cube
-        (mesh,
-         coarsegridsize, coarsegridsize,coarsegridsize,
-         0., 1.,
-         0., 1.,
-         0., 1.,
-         //TET4);
-         HEX8);
+      out << "Reading in mesh: " << mesh_name << std::endl;
+      mesh.read(mesh_name);
     }
 
   mesh->partitioner() = NULL;
@@ -150,6 +160,15 @@ int main (int argc, char ** argv)
 
   // solve the steady solution
   system.solve();
+
+#ifdef LIBMESH_HAVE_EXODUS_API
+  ExodusII_IO(mesh).write_equation_systems
+    ("out.e", equation_systems);
+#endif // #ifdef LIBMESH_HAVE_EXODUS_API
+
+
+
+
 
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution

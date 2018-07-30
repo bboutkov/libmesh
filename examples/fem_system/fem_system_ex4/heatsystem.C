@@ -21,13 +21,20 @@ void HeatSystem::init_data ()
 
   const unsigned int dim = this->get_mesh().mesh_dimension();
 
-
-  // Add dirichlet boundaries on all but the boundary element side
-  const boundary_id_type all_ids[6] = {0, 1, 2, 3, 4, 5};
-  std::set<boundary_id_type> bndrys(all_ids, all_ids+(dim*2));
-
   std::vector<unsigned int> T_only(1, T_var);
   ZeroFunction<Number> zero;
+
+  // Add dirichlet boundaries on all sides
+  boundary_id_type all_ids[6] = {0, 1, 2, 3, 4, 5};
+
+  GetPot infile("fem_system_ex4.in");
+  const std::string  mesh_name = infile("mesh_name", "DIE!");
+  // trelis doesnt like 0 counting sideset ids
+  if ( !mesh_name.empty() && (mesh_name != "DIE!") )
+    for (int i = 0; i < 6; i++)
+      all_ids[i] += 1;
+
+  std::set<boundary_id_type> bndrys(all_ids, all_ids+(dim*2));
 
   // Most DirichletBoundary users will want to supply a "locally
   // indexed" functor
