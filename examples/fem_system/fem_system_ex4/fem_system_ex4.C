@@ -39,6 +39,7 @@
 #include "libmesh/mesh.h"
 #include "libmesh/partitioner.h"
 #include "libmesh/parallel_mesh.h"
+#include "libmesh/serial_mesh.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh_refinement.h"
 #include "libmesh/parsed_function.h"
@@ -74,6 +75,8 @@ int main (int argc, char ** argv)
   const unsigned int coarserefinements = infile("coarserefinements", 3);
   const unsigned int dim               = infile("dimension", 2);
   const std::string  mesh_name         = infile("mesh_name", "DIE!");
+  const std::string  mesh_type         = infile("mesh_type", "distributed");
+  const std::string  write_solution    = infile("write_solution", "false");
 
   // Skip higher-dimensional examples on a lower-dimensional libMesh build
   libmesh_example_requires(dim <= LIBMESH_DIM, "2D/3D support");
@@ -81,12 +84,26 @@ int main (int argc, char ** argv)
   // We have only defined 2 and 3 dimensional problems
   libmesh_assert (dim == 2 || dim == 3);
 
-  // Create a mesh, with dimension to be overridden later, distributed
-  // across the default MPI communicator.
-  ParallelMesh mesh(init.comm());
+  // Create UnstructuredMesh object (defaults to dimension 1).
+  std::shared_ptr<libMesh::UnstructuredMesh> mesh;
 
-  // And an object to refine it
-  MeshRefinement mesh_refinement(mesh);
+  // Parse mesh type from input file
+  if (mesh_type == "distributed")
+    {
+      out << "Building a distributed mesh!" << std::endl;
+      mesh.reset(new libMesh::ParallelMesh(init.comm()));
+    }
+  else if (mesh_type == "replicated")
+    {
+      out << "Building a replicated mesh!" << std::endl;
+      mesh.reset(new libMesh::ReplicatedMesh(init.comm()));
+    }
+  else
+    {
+      std::string error = "ERROR: Invalid mesh type  " + mesh_type + " provided.\n";
+      error += "       Valid choices are: replicated, distributed.\n";
+      libmesh_error_msg(error);
+    }
 
   if (mesh_name.empty() || (mesh_name == "DIE!") )
     {
@@ -96,7 +113,7 @@ int main (int argc, char ** argv)
       if (dim == 2)
         {
           MeshTools::Generation::build_square
-            (mesh,
+            (*mesh,
              coarsegridsize, coarsegridsize,
              0., 1.,
              0., 1.,
@@ -105,7 +122,7 @@ int main (int argc, char ** argv)
       else if (dim == 3)
         {
           MeshTools::Generation::build_cube
-            (mesh,
+            (*mesh,
              coarsegridsize, coarsegridsize,coarsegridsize,
              0., 1.,
              0., 1.,
@@ -117,17 +134,21 @@ int main (int argc, char ** argv)
   else
     {
       out << "Reading in mesh: " << mesh_name << std::endl;
-      mesh.read(mesh_name);
+      mesh->read(mesh_name);
     }
 
+  // Now, make an object to refine mesh
+  MeshRefinement mesh_refinement(*mesh);
+
+  // Refine as per the input file
   mesh->partitioner() = NULL;
   mesh_refinement.uniformly_refine(coarserefinements);
 
   // Print information about the mesh to the screen.
-  mesh.print_info();
+  mesh->print_info();
 
   // Create an equation systems object.
-  EquationSystems equation_systems (mesh);
+  EquationSystems equation_systems (*mesh);
 
   // Declare the system "Heat" and its variables.
   HeatSystem & system =
@@ -161,14 +182,12 @@ int main (int argc, char ** argv)
   // solve the steady solution
   system.solve();
 
+  // write solution out if requested from input file
 #ifdef LIBMESH_HAVE_EXODUS_API
-  ExodusII_IO(mesh).write_equation_systems
-    ("out.e", equation_systems);
-#endif // #ifdef LIBMESH_HAVE_EXODUS_API
-
-
-
-
+  if ( !write_solution.empty() && (write_solution != "false") )
+    ExodusII_IO(*mesh).write_equation_systems
+      (write_solution, equation_systems);
+#endif
 
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution

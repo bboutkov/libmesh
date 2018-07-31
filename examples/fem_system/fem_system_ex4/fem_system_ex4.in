@@ -2,12 +2,23 @@
 
 # The coarse grid size from which to start multigrid prerefinement
 coarsegridsize = 25
-coarserefinements = 3
-
-# Turn this off to see the NewtonSolver chatter
-solver_quiet = false
 
 # Solve the 2D or 3D problem
 dimension = 2
 
-mesh_name = 'quad_tri_mixed.e'
+# Or can specify this filename instead of coarse grid size
+#mesh_name = 'quad_tri_mixed.e'
+
+# How many times we refine the coarse mesh
+coarserefinements = 2
+
+# We can specify mesh_type as 'distributed' or 'replicated'
+#mesh_type = 'distributed'
+mesh_type = 'replicated'
+
+# Specify the solution output or lack thereof
+#write_solution = 'my_output.e'
+write_solution = 'false'
+
+# Turn this off to see the NewtonSolver chatter
+solver_quiet = false
