@@ -38,6 +38,7 @@
 #include "libmesh/exodusII_io.h"
 #include "libmesh/mesh.h"
 #include "libmesh/partitioner.h"
+#include "libmesh/dof_map.h"
 #include "libmesh/parallel_mesh.h"
 #include "libmesh/serial_mesh.h"
 #include "libmesh/mesh_generation.h"
@@ -160,6 +161,37 @@ int main (int argc, char ** argv)
   // Initialize the system
   equation_systems.init ();
 
+  mesh->allow_renumbering(false);
+  mesh->allow_remote_element_removal(false);
+  mesh->partitioner() = NULL;
+
+  for (int i = 0; i < coarserefinements ; i++)
+    {
+      START_LOG ("PDM_coarsen", "PetscDMWrapper");
+      out << "Coarsening.. " << std::endl;
+      mesh_refinement.uniformly_coarsen(1);
+      STOP_LOG ("PDM_coarsen", "PetscDMWrapper");
+
+      START_LOG ("PDM_dist_dofs", "PetscDMWrapper");
+      system.get_dof_map().distribute_dofs(*mesh);
+      STOP_LOG ("PDM_dist_dofs", "PetscDMWrapper");
+    }
+
+  for (int i = coarserefinements; i>0 ; i--)
+    {
+      START_LOG ("PDM_Refine", "PetscDMWrapper");
+      out << "Refining.. "  << std::endl;
+      mesh_refinement.uniformly_refine(1);
+      STOP_LOG ("PDM_Refine", "PetscDMWrapper");
+
+      START_LOG ("PDM_dist_dofs", "PetscDMWrapper");
+      system.get_dof_map().distribute_dofs(*mesh);
+      STOP_LOG ("PDM_dist_dofs", "PetscDMWrapper");
+
+    }
+
+
+  /*
   // And the nonlinear solver options
   system.get_time_solver().diff_solver() = libmesh_make_unique<PetscDiffSolver>(system);
   DiffSolver & solver = *(system.time_solver->diff_solver().get());
@@ -206,6 +238,8 @@ int main (int argc, char ** argv)
   libmesh_assert_less(libmesh_real(err), 2e-3);
 
 #endif // #ifdef LIBMESH_HAVE_FPARSER
+
+  */
 
   // All done.
   return 0;
