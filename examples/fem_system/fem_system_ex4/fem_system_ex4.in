@@ -6,19 +6,23 @@ coarsegridsize = 25
 # Solve the 2D or 3D problem
 dimension = 2
 
+# For meshgen specify element type ( QUAD4 / TRI3 / HEX8 / TET4 )
+elem_type = 'QUAD4'
+
 # Or can specify this filename instead of coarse grid size
-#mesh_name = 'quad_tri_mixed.e'
+#mesh_name = 'pacman_uniform.e'
+#mesh_name = 'quad_tri_circle.e'
 
 # How many times we refine the coarse mesh
 coarserefinements = 2
 
 # We can specify mesh_type as 'distributed' or 'replicated'
-#mesh_type = 'distributed'
-mesh_type = 'replicated'
+mesh_type = 'distributed'
+#mesh_type = 'replicated'
 
 # Specify the solution output or lack thereof
-#write_solution = 'my_output.e'
-write_solution = 'false'
+write_solution = 'elem_type_output.e'
+#write_solution = 'false'
 
 # Turn this off to see the NewtonSolver chatter
 solver_quiet = false

@@ -47,6 +47,7 @@
 #include "libmesh/auto_ptr.h" // libmesh_make_unique
 #include "libmesh/enum_solver_package.h"
 #include "libmesh/enum_norm_type.h"
+#include "libmesh/string_to_enum.h"
 
 // The systems and solvers we may use
 #include "heatsystem.h"
@@ -75,6 +76,7 @@ int main (int argc, char ** argv)
   const unsigned int coarsegridsize    = infile("coarsegridsize", 25);
   const unsigned int coarserefinements = infile("coarserefinements", 3);
   const unsigned int dim               = infile("dimension", 2);
+  const std::string  elem_type_str     = infile("elem_type", "QUAD4");
   const std::string  mesh_name         = infile("mesh_name", "DIE!");
   const std::string  mesh_type         = infile("mesh_type", "distributed");
   const std::string  write_solution    = infile("write_solution", "false");
@@ -108,9 +110,12 @@ int main (int argc, char ** argv)
 
   if (mesh_name.empty() || (mesh_name == "DIE!") )
     {
-      out << "Generating mesh.. " << std::endl;
+      out << "Generating initial mesh.. " << std::endl;
       // Use the MeshTools::Generation mesh generator to create a uniform
-      // grid on the square or cube.
+      // grid on the square or cube. First translate input file to enum.
+
+      ElemType elem_type = Utility::string_to_enum<ElemType>(elem_type_str);
+
       if (dim == 2)
         {
           MeshTools::Generation::build_square
@@ -118,7 +123,7 @@ int main (int argc, char ** argv)
              coarsegridsize, coarsegridsize,
              0., 1.,
              0., 1.,
-             QUAD4);
+             elem_type);
         }
       else if (dim == 3)
         {
@@ -128,8 +133,7 @@ int main (int argc, char ** argv)
              0., 1.,
              0., 1.,
              0., 1.,
-             //TET4);
-             HEX8);
+             elem_type);
         }
     }
   else
