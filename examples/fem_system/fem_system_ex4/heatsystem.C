@@ -1,5 +1,6 @@
 #include "heatsystem.h"
 
+#include "libmesh/parsed_function.h"
 #include "libmesh/dirichlet_boundaries.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/fe_base.h"
@@ -34,12 +35,30 @@ void HeatSystem::init_data ()
     for (int i = 0; i < 6; i++)
       all_ids[i] += 1;
 
+  // Adjust BC for circle/pacman meshes since they have less BC..
+  // TODO: this is pretty janky
+  if ( mesh_name.find("circle") != std::string::npos )
+    std::fill(all_ids, all_ids+6 ,1 );
+  else if ( mesh_name.find("pacman") != std::string::npos )
+    std::fill(all_ids, all_ids+6 ,2323 );
+
   std::set<boundary_id_type> bndrys(all_ids, all_ids+(dim*2));
+
+
+  const std::string exact_str = (dim == 2) ?
+    "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+  ParsedFunction<Number> exact_func(exact_str);
 
   // Most DirichletBoundary users will want to supply a "locally
   // indexed" functor
-  this->get_dof_map().add_dirichlet_boundary
-   (DirichletBoundary (bndrys, T_only, zero, LOCAL_VARIABLE_ORDER));
+  if ( mesh_name == "quad_tri_circle.e")
+    this->get_dof_map().add_dirichlet_boundary
+      (DirichletBoundary (bndrys, T_only, exact_func, LOCAL_VARIABLE_ORDER));
+  else
+    this->get_dof_map().add_dirichlet_boundary
+      (DirichletBoundary (bndrys, T_only, zero, LOCAL_VARIABLE_ORDER));
+
+
 
   // Do the parent's initialization after variables are defined
   FEMSystem::init_data();

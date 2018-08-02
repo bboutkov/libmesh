@@ -161,6 +161,7 @@ int main (int argc, char ** argv)
   // Initialize the system
   equation_systems.init ();
 
+  /*
   mesh->allow_renumbering(false);
   mesh->allow_remote_element_removal(false);
   mesh->partitioner() = NULL;
@@ -189,9 +190,8 @@ int main (int argc, char ** argv)
       STOP_LOG ("PDM_dist_dofs", "PetscDMWrapper");
 
     }
+  */
 
-
-  /*
   // And the nonlinear solver options
   system.get_time_solver().diff_solver() = libmesh_make_unique<PetscDiffSolver>(system);
   DiffSolver & solver = *(system.time_solver->diff_solver().get());
@@ -239,7 +239,6 @@ int main (int argc, char ** argv)
 
 #endif // #ifdef LIBMESH_HAVE_FPARSER
 
-  */
 
   // All done.
   return 0;
