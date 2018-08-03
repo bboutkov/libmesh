@@ -69,7 +69,7 @@ int main (int argc, char ** argv)
   libmesh_example_requires(libMesh::default_solver_package() != INVALID_SOLVER_PACKAGE,
                            "--enable-petsc, --enable-trilinos, or --enable-eigen");
 
- // Parse the input file
+  // Parse the input file
   GetPot infile("fem_system_ex4.in");
 
   // Read in parameters from the input file

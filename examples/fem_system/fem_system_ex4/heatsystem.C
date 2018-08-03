@@ -23,42 +23,74 @@ void HeatSystem::init_data ()
   const unsigned int dim = this->get_mesh().mesh_dimension();
 
   std::vector<unsigned int> T_only(1, T_var);
-  ZeroFunction<Number> zero;
 
   // Add dirichlet boundaries on all sides
-  boundary_id_type all_ids[6] = {0, 1, 2, 3, 4, 5};
+  std::vector<boundary_id_type> all_ids;
 
   GetPot infile("fem_system_ex4.in");
-  const std::string  mesh_name = infile("mesh_name", "DIE!");
-  // trelis doesnt like 0 counting sideset ids
-  if ( !mesh_name.empty() && (mesh_name != "DIE!") )
-    for (int i = 0; i < 6; i++)
-      all_ids[i] += 1;
+  const std::string  mesh_name     = infile("mesh_name",     "DIE!");
+  const std::string  boundary_type = infile("boundary_type", "DIE!");
+  this->forcing_function           = infile("forcing_function", "DIE!");
 
-  // Adjust BC for circle/pacman meshes since they have less BC..
-  // TODO: this is pretty janky
-  if ( mesh_name.find("circle") != std::string::npos )
-    std::fill(all_ids, all_ids+6 ,1 );
-  else if ( mesh_name.find("pacman") != std::string::npos )
-    std::fill(all_ids, all_ids+6 ,2323 );
+  // Figure out boundary ids (either we generated them,
+  // or we use trelis assigned subdomain ids.
+  // If were generating we can 0 count safely
+  if ( mesh_name.empty() || (mesh_name == "DIE!") )
+    {
+      if ( dim == 2 )
+        all_ids.insert(all_ids.end(), {0, 1, 2, 3});
+      else if ( dim == 3 )
+        all_ids.insert(all_ids.end(), {0, 1, 2, 3, 4, 5});
+    }
+  else // we better be reading in a mesh..
+    {
+      // Adjust BC for circle/pacman meshes since they have less BC..
+      if ( mesh_name.find("circle") != std::string::npos )
+        all_ids.insert(all_ids.end(), {1});
+      else if ( mesh_name.find("pacman") != std::string::npos )
+        all_ids.insert(all_ids.end(), {1, 2, 3});
+      else if ( mesh_name.find("fichera") != std::string::npos )
+        // for now this is just exterior interior faces,
+        // probably will need tospecify each interior individually
+        all_ids.insert(all_ids.end(), {1, 2});
+      else
+        // we read in a vanilla quad/cube mesh and just cant 0 count
+        // since trelis insists on numbering sidesets from 1
+        for (int i = 0; i < all_ids.size(); i++)
+          all_ids[i] += 1;
+    }
 
-  std::set<boundary_id_type> bndrys(all_ids, all_ids+(dim*2));
+  if (boundary_type == "zero")
+    {
+      std::set<boundary_id_type> bndrys(all_ids.begin(), all_ids.end());
+      ZeroFunction<Number> zero;
+      this->get_dof_map().add_dirichlet_boundary
+        (DirichletBoundary (bndrys, T_only, zero, LOCAL_VARIABLE_ORDER));
+    }
+  else if (boundary_type == "exact")
+    {
+      std::set<boundary_id_type> bndrys(all_ids.begin(), all_ids.end());
+      const std::string exact_str = (dim == 2) ?
+        "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+      ParsedFunction<Number> exact_func(exact_str);
 
-
-  const std::string exact_str = (dim == 2) ?
-    "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
-  ParsedFunction<Number> exact_func(exact_str);
-
-  // Most DirichletBoundary users will want to supply a "locally
-  // indexed" functor
-  if ( mesh_name == "quad_tri_circle.e")
-    this->get_dof_map().add_dirichlet_boundary
-      (DirichletBoundary (bndrys, T_only, exact_func, LOCAL_VARIABLE_ORDER));
+      if ( mesh_name == "quad_tri_circle.e")
+        this->get_dof_map().add_dirichlet_boundary
+          (DirichletBoundary (bndrys, T_only, exact_func, LOCAL_VARIABLE_ORDER));
+    }
+  else if (boundary_type == "hot_cold")
+    {
+      std::set<boundary_id_type> hot_bndrys({0});
+      std::set<boundary_id_type> cold_bndrys({ (dim == 2)? (boundary_id_type) 2 : (boundary_id_type) 5 });
+      ConstFunction<Number> hot(5.0);
+      ConstFunction<Number> cold(1.0);
+      this->get_dof_map().add_dirichlet_boundary
+        (DirichletBoundary (hot_bndrys, T_only, hot, LOCAL_VARIABLE_ORDER));
+      this->get_dof_map().add_dirichlet_boundary
+        (DirichletBoundary (cold_bndrys, T_only, cold, LOCAL_VARIABLE_ORDER));
+    }
   else
-    this->get_dof_map().add_dirichlet_boundary
-      (DirichletBoundary (bndrys, T_only, zero, LOCAL_VARIABLE_ORDER));
-
-
+    libmesh_error_msg("input file boundary_type not understood");
 
   // Do the parent's initialization after variables are defined
   FEMSystem::init_data();
@@ -133,9 +165,10 @@ bool HeatSystem::element_time_derivative (bool request_jacobian,
         std::sin(libMesh::pi*p(0)) * std::sin(libMesh::pi*p(1)) *
         std::sin(libMesh::pi*p(2));
 
-      const Number forcing = - u_exact * (dim * libMesh::pi * libMesh::pi);
+      Number forcing = 0;
 
-      //std::cout << "force: " << forcing << "\n";
+      if ( this->forcing_function == "on" )
+           forcing_function = -u_exact * (dim * libMesh::pi * libMesh::pi);
 
       const Number JxWxNK = JxW[qp];
 

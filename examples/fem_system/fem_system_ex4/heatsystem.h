@@ -38,4 +38,8 @@ protected:
 
   // The variable index (yes, this will be 0...)
   unsigned int T_var;
+
+  // Forcing function read in from input
+  std::string forcing_function;
+
 };

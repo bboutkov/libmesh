@@ -7,21 +7,30 @@ coarsegridsize = 25
 dimension = 2
 
 # For meshgen specify element type ( QUAD4 / TRI3 / HEX8 / TET4 )
-elem_type = 'QUAD4'
+elem_type = 'TRI3'
 
 # Or can specify this filename instead of coarse grid size
 #mesh_name = 'pacman_uniform.e'
 #mesh_name = 'quad_tri_circle.e'
 
 # How many times we refine the coarse mesh
-coarserefinements = 2
+coarserefinements = 3
 
 # We can specify mesh_type as 'distributed' or 'replicated'
 mesh_type = 'distributed'
 #mesh_type = 'replicated'
 
+# Some basic BC settings, can choose from the following
+# options : zero, hot_cold, exact
+boundary_type = 'zero'
+
+# Some basic forcing function settings:
+# options : off on
+forcing_function = 'on'
+
+
 # Specify the solution output or lack thereof
-write_solution = 'elem_type_output.e'
+write_solution = 'hc_out_3d.e'
 #write_solution = 'false'
 
 # Turn this off to see the NewtonSolver chatter
