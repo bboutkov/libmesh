@@ -76,10 +76,11 @@ int main (int argc, char ** argv)
   const unsigned int coarsegridsize    = infile("coarsegridsize", 25);
   const unsigned int coarserefinements = infile("coarserefinements", 3);
   const unsigned int dim               = infile("dimension", 2);
-  const std::string  elem_type_str     = infile("elem_type", "QUAD4");
-  const std::string  mesh_name         = infile("mesh_name", "DIE!");
-  const std::string  mesh_type         = infile("mesh_type", "distributed");
-  const std::string  write_solution    = infile("write_solution", "false");
+  const std::string elem_type_str      = infile("elem_type", "QUAD4");
+  const std::string mesh_name          = infile("mesh_name", "DIE!");
+  const std::string mesh_type          = infile("mesh_type", "distributed");
+  const std::string write_solution     = infile("write_solution", "false");
+  const std::string forcing_function   = infile("forcing_function", "DIE!");
 
   // Skip higher-dimensional examples on a lower-dimensional libMesh build
   libmesh_example_requires(dim <= LIBMESH_DIM, "2D/3D support");
@@ -108,7 +109,7 @@ int main (int argc, char ** argv)
       libmesh_error_msg(error);
     }
 
-  if (mesh_name.empty() || (mesh_name == "DIE!") )
+  if ( mesh_name.empty() || (mesh_name == "DIE!") )
     {
       out << "Generating initial mesh.. " << std::endl;
       // Use the MeshTools::Generation mesh generator to create a uniform
@@ -228,8 +229,21 @@ int main (int argc, char ** argv)
 #ifdef LIBMESH_HAVE_FPARSER
   // Check that we got close to the analytic solution
   ExactSolution exact_sol(equation_systems);
-  const std::string exact_str = (dim == 2) ?
-    "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+  std::string exact_str;
+
+  if ( forcing_function == "on" )
+    {
+      exact_str = (dim == 2) ?
+        "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+    }
+  else if ( forcing_function == "off" )
+    { // assume were doing a hot cold problem for now.
+      exact_str = (dim == 2) ?
+        "-4*y + 5" : "-4*z + 5";
+    }
+  else
+    libmesh_error_msg("ERROR: forcing_function input not understood!");
+
   ParsedFunction<Number> exact_func(exact_str);
   exact_sol.attach_exact_value(0, &exact_func);
   exact_sol.compute_error("Heat", "T");
