@@ -28,8 +28,8 @@ void HeatSystem::init_data ()
   std::vector<boundary_id_type> all_ids;
 
   GetPot infile("fem_system_ex4.in");
-  const std::string  mesh_name     = infile("mesh_name",     "DIE!");
-  const std::string  boundary_type = infile("boundary_type", "DIE!");
+  const std::string  mesh_name     = infile("mesh_name",        "DIE!");
+  const std::string  boundary_type = infile("boundary_type",    "DIE!");
   this->forcing_function           = infile("forcing_function", "DIE!");
 
   // Figure out boundary ids (either we generated them,
@@ -56,8 +56,10 @@ void HeatSystem::init_data ()
       else
         // we read in a vanilla quad/cube mesh and just cant 0 count
         // since trelis insists on numbering sidesets from 1
-        for (int i = 0; i < all_ids.size(); i++)
-          all_ids[i] += 1;
+      if ( dim == 2 )
+        all_ids.insert(all_ids.end(), {1, 2, 3, 4});
+      else if ( dim == 3 )
+        all_ids.insert(all_ids.end(), {1, 2, 3, 4, 5, 6});
     }
 
   if (boundary_type == "zero")
@@ -168,7 +170,7 @@ bool HeatSystem::element_time_derivative (bool request_jacobian,
       Number forcing = 0;
 
       if ( this->forcing_function == "on" )
-           forcing_function = -u_exact * (dim * libMesh::pi * libMesh::pi);
+           forcing = -u_exact * (dim * libMesh::pi * libMesh::pi);
 
       const Number JxWxNK = JxW[qp];
 
