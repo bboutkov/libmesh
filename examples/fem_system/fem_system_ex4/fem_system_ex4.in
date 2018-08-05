@@ -1,36 +1,36 @@
 # Input file to allow for modification of some multigrid related options
 
 # The coarse grid size from which to start multigrid prerefinement
-coarsegridsize = 25
+#coarsegridsize = 25
 
 # Solve the 2D or 3D problem
 dimension = 2
 
 # For meshgen specify element type ( QUAD4 / TRI3 / HEX8 / TET4 )
-elem_type = 'TRI3'
+#elem_type = 'TET4'
 
 # Or can specify this filename instead of coarse grid size
-#mesh_name = 'pacman_uniform.e'
+mesh_name = 'pacman_uniform.e'
 #mesh_name = 'quad_tri_circle.e'
 
 # How many times we refine the coarse mesh
-coarserefinements = 3
+coarserefinements = 1
 
 # We can specify mesh_type as 'distributed' or 'replicated'
 mesh_type = 'distributed'
 #mesh_type = 'replicated'
 
 # Some basic BC settings, can choose from the following
-# options : zero, hot_cold, exact
-boundary_type = 'zero'
+# options : zero, hot_cold, exact, pacman
+boundary_type = 'pacman'
 
 # Some basic forcing function settings:
-# options : off on
-forcing_function = 'on'
+# options : off, on
+forcing_function = 'off'
 
 
 # Specify the solution output or lack thereof
-write_solution = 'hc_out_3d.e'
+write_solution = 'pacman_out.e'
 #write_solution = 'false'
 
 # Turn this off to see the NewtonSolver chatter

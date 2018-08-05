@@ -69,16 +69,22 @@ void HeatSystem::init_data ()
       this->get_dof_map().add_dirichlet_boundary
         (DirichletBoundary (bndrys, T_only, zero, LOCAL_VARIABLE_ORDER));
     }
-  else if (boundary_type == "exact")
+  else if ( (boundary_type == "exact") || (boundary_type == "pacman") )
     {
       std::set<boundary_id_type> bndrys(all_ids.begin(), all_ids.end());
-      const std::string exact_str = (dim == 2) ?
-        "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+      std::string exact_str;
+
+      if ( boundary_type == "exact" )
+        exact_str = (dim == 2) ?
+          "sin(pi*x)*sin(pi*y)" : "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+      else if ( boundary_type == "pacman" )
+        exact_str = "cbrt( x^2 + y^2 ) * sin( (2.0/3.0) * atan(y/x) )";
+
       ParsedFunction<Number> exact_func(exact_str);
 
-      if ( mesh_name == "quad_tri_circle.e")
-        this->get_dof_map().add_dirichlet_boundary
+      this->get_dof_map().add_dirichlet_boundary
           (DirichletBoundary (bndrys, T_only, exact_func, LOCAL_VARIABLE_ORDER));
+
     }
   else if (boundary_type == "hot_cold")
     {
