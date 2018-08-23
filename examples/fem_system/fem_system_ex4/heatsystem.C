@@ -16,7 +16,7 @@ using namespace libMesh;
 
 void HeatSystem::init_data ()
 {
-  T_var = this->add_variable("T", static_cast<Order>(_fe_order),
+  T_var = this->add_variable("Temp", static_cast<Order>(_fe_order),
                              Utility::string_to_enum<FEFamily>(_fe_family));
 
   const unsigned int dim = this->get_mesh().mesh_dimension();
