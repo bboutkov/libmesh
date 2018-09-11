@@ -57,6 +57,8 @@ public:
   CPPUNIT_TEST( testBoundaryProjectCube );
 
 #ifdef LIBMESH_ENABLE_AMR
+  CPPUNIT_TEST( testCoarsenAMRMeshTri3);
+  CPPUNIT_TEST( testCoarsenAMRMeshQuad4 );
 #ifdef LIBMESH_HAVE_METAPHYSICL
 #ifdef LIBMESH_HAVE_PETSC
   CPPUNIT_TEST( testProjectMatrixEdge2 );
@@ -362,6 +364,52 @@ public:
 #ifdef LIBMESH_ENABLE_AMR
 #ifdef LIBMESH_HAVE_METAPHYSICL
 #ifdef LIBMESH_HAVE_PETSC
+  void testCoarsenAMRMesh(const ElemType elem_type)
+  {
+    // init a simple 2d system
+    Mesh mesh(*TestCommWorld);
+
+    EquationSystems es(mesh);
+    System &sys = es.add_system<System> ("SimpleSystem");
+    sys.add_variable("u", FIRST, LAGRANGE);
+
+    if (elem_type == Utility::string_to_enum<ElemType>("QUAD4"))
+      MeshTools::Generation::build_square (mesh,
+                                           1, 1,
+                                           0., 1., 0., 1.,
+                                           elem_type);
+    else if (elem_type == Utility::string_to_enum<ElemType>("TRI3"))
+      MeshTools::Generation::build_square (mesh,
+                                           1, 1,
+                                           0., 1., 0., 1.,
+                                           elem_type);
+
+    es.init();
+
+    // stash number of dofs on coarse grid for projection sizing
+    int n_initial_dofs = sys.n_dofs();
+
+    // refine the mesh once
+    MeshRefinement mr(mesh);
+    mr.uniformly_refine(1);
+    es.reinit();
+
+    // get an element to "amr refine"
+    auto first_active_elem = mesh.active_local_elements_begin();
+    Elem * elem_to_refine = mesh.elem((*first_active_elem)->id());
+
+    // refine that element
+    elem_to_refine->set_refinement_flag(Elem::REFINE);
+    mr.refine_and_coarsen_elements();
+    es.reinit();
+
+    // can we uniformly coarsen? testing PR#1853
+    mr.uniformly_coarsen();
+    es.reinit();
+  }
+
+
+
   void testProjectMatrix1D(const ElemType elem_type)
   {
     // Use ReplicatedMesh to get consistent child element node
@@ -831,6 +879,9 @@ public:
 #ifdef LIBMESH_ENABLE_AMR
 #ifdef LIBMESH_HAVE_METAPHYSICL
 #ifdef LIBMESH_HAVE_PETSC
+  void testCoarsenAMRMeshQuad4(){ testCoarsenAMRMesh(QUAD4); }
+  void testCoarsenAMRMeshTri3() { testCoarsenAMRMesh(TRI3); }
+
   // projection matrix tests
   void testProjectMatrixEdge2() { testProjectMatrix1D(EDGE2); }
   void testProjectMatrixQuad4() { testProjectMatrix2D(QUAD4); }
