@@ -91,7 +91,7 @@ namespace libMesh
       return 0;
     }
 
-    //! Function to give PETSc that sets the Interpolation Matrix between two dms
+    //! Function to give PETSc that sets the Interpolation Matrix between two DMs
     PetscErrorCode
     __libmesh_petsc_DMCreateInterpolation (DM dmc /*coarse*/, DM dmf /*fine*/,
                                          Mat * mat ,Vec * vec)
@@ -101,9 +101,15 @@ namespace libMesh
       libmesh_assert(mat);
       libmesh_assert(vec); // optional scaling (not needed for mg)
 
-      // extract our coarse context from the incoming dm
+      PetscErrorCode ierr;
+
+      // get a communicator from incomming DM
+      MPI_Comm comm;
+      PetscObjectGetComm((PetscObject)dmc, &comm);
+
+      // extract our coarse context from the incoming DM
       void * ctx_c = NULL;
-      DMShellGetContext(dmc, &ctx_c);
+      ierr = DMShellGetContext(dmc, &ctx_c);CHKERRABORT(comm, ierr);
       libmesh_assert(ctx_c);
       PetscDMContext * p_ctx_c = static_cast<PetscDMContext*>(ctx_c);
 
@@ -115,7 +121,7 @@ namespace libMesh
       return 0;
     }
 
-    //! Function to give PETSc that sets the Restriction Matrix between two dms
+    //! Function to give PETSc that sets the Restriction Matrix between two DMs
     PetscErrorCode
     __libmesh_petsc_DMCreateRestriction (DM dmc /*coarse*/, DM dmf/*fine*/, Mat * mat)
     {
@@ -123,9 +129,15 @@ namespace libMesh
       libmesh_assert(dmf);
       libmesh_assert(mat);
 
-      // extract our fine context from the incoming dm
+      PetscErrorCode ierr;
+
+      // get a communicator from incomming DM
+      MPI_Comm comm;
+      PetscObjectGetComm((PetscObject)dmc, &comm);
+
+      // extract our fine context from the incoming DM
       void * ctx_f = NULL;
-      DMShellGetContext(dmf, &ctx_f);
+      ierr = DMShellGetContext(dmf, &ctx_f);CHKERRABORT(comm, ierr);
       libmesh_assert(ctx_f);
       PetscDMContext * p_ctx_f = static_cast<PetscDMContext*>(ctx_f);
 
