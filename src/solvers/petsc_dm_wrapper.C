@@ -113,9 +113,44 @@ namespace libMesh
       libmesh_assert(ctx_c);
       PetscDMContext * p_ctx_c = static_cast<PetscDMContext*>(ctx_c);
 
-      // check / give PETSc its matrix
+      // check for projection matrix
       libmesh_assert(p_ctx_c->K_interp_ptr);
-      *(mat) = p_ctx_c->K_interp_ptr->mat();
+
+      IS * index_set_listc;
+      IS * index_set_listf;
+      PetscInt nfieldsc,nfieldsf;
+      PetscSection section;
+      MPI_Comm comm;
+
+      PetscObjectGetComm((PetscObject)dmc, &comm);
+      //DMGetSection(dmc, &section);
+
+      //PetscSectionGetNumFields(section, &nfieldsc);
+
+      DMCreateFieldIS(dmc, &nfieldsc, NULL, &index_set_listc);
+
+      DMCreateFieldIS(dmf, &nfieldsf, NULL, &index_set_listf);
+
+      std::cout <<  "dm num fieldsc: " << nfieldsc << " dm num fieldsf: " << nfieldsf << std::endl;
+
+
+      PetscInt issize1, issize2;
+      ISGetSize(index_set_listf[0], &issize1);
+      ISGetSize(index_set_listf[1], &issize2);
+
+
+      IS isfull;
+      ISSum(index_set_listf[0],index_set_listf[1], &isfull);
+
+      std::cout <<  "isfine1: " << issize1 << " isfine2: " << issize2 << std::endl;
+
+
+      //MatCreateSubMatrix(Mat mat,IS isrow,IS iscol,MatReuse cll,Mat *newmat)
+      Mat newmat;
+      MatCreate(comm, &newmat);
+      MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfull,*index_set_listc, MAT_INITIAL_MATRIX, &newmat);
+
+      *(mat) = newmat;
       *(vec) = PETSC_NULL;
 
       return 0;
