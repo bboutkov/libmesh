@@ -68,7 +68,7 @@ namespace libMesh
       return 0;
     }
 
-    //! Help PETSc identify the coarser DM given a dmf
+    //! Help PETSc identify the coarser DM dmc given the fine DM dmf
     PetscErrorCode __libmesh_petsc_DMCoarsen(DM dmf, MPI_Comm comm, DM * dmc)
     {
       libmesh_assert(dmc);
@@ -77,15 +77,74 @@ namespace libMesh
 
       PetscErrorCode ierr;
 
-      // extract our context from the incoming dmf
+      // Extract our context from the incoming dmf
       void * ctx_f = NULL;
       ierr = DMShellGetContext(dmf, &ctx_f);CHKERRABORT(comm, ierr);
       libmesh_assert(ctx_f);
       PetscDMContext * p_ctx = static_cast<PetscDMContext*>(ctx_f);
 
-      // check / set the coarser DM
+      // First, ensure that there exists a coarse DM that we want to
+      // set. There ought to be as we created it while walking the
+      // hierarchy.
       libmesh_assert(p_ctx->coarser_dm);
       libmesh_assert(*(p_ctx->coarser_dm));
+
+      // In situations using fieldsplit we need to (potentially)
+      // provide a coarser DM which only has the relevant subfields in
+      // it. Since we create global DMs for each mesh level, we need
+      // to extract the section from the DM, and check the number of
+      // fields. When less than all the fields are used, we need to
+      // create the proper subsections.
+
+      // Get the number of fields and their names from the incomming fine DM
+      // and the global reference
+      PetscInt nfieldsf, nfieldsg;
+      char ** fieldnamesf;
+      char ** fieldnamesg;
+
+      DM * globaldm = p_ctx->global_dm;
+      ierr = DMCreateFieldIS(dmf, &nfieldsf, &fieldnamesf, NULL);CHKERRABORT(comm, ierr);
+      ierr = DMCreateFieldIS(*globaldm, &nfieldsg, &fieldnamesg, NULL);CHKERRABORT(comm, ierr);
+
+      std::cout <<  "DMcoarsen: nfields fine dm extracted from DMCreateFieldIS: " << nfieldsf  << std::endl;
+      std::cout <<  "DMcoarsen: nfields global dm extracted from DMCreateFieldIS: " << nfieldsg  << std::endl;
+
+      // If the probed number of fields is less than the number of
+      // global fields, this amounts to PETSc 'indicating' to us we
+      // are doing FS. So, we must create subsections for the
+      // coarser DMs.
+      if ( nfieldsf < nfieldsg )
+        {
+          PetscSection section;
+          PetscSection subsection;
+          PetscInt subfields[nfieldsf]; // extracted fields
+
+          // First, get the section from the coarse DM
+          ierr = DMGetSection(*(p_ctx->coarser_dm), &section);CHKERRQ(ierr);
+
+          // Now, match fine grid DM field names to their global DM
+          //  counterparts. Since PETSc can internally reassign field
+          //  numbering under a fieldsplit, we must extract
+          //  subsections via the field names. This is admittedly
+          //  gross, but c'est la vie.
+          for (int i = 0; i < nfieldsf ; i++)
+            {
+              std::cout <<  "DMcoarsen: found fine field: "<< fieldnamesf[i]  << std::endl;
+              for (int j = 0; j < nfieldsg ;j++)
+                if ( strcmp( fieldnamesg[j], fieldnamesf[i] ) == 0 )
+                  {
+                    out << "matched fine field: "<< fieldnamesf[i] << " with global field: " << fieldnamesg[j] << " with index " << j<< std::endl;
+                    subfields[i] = j;
+                  }
+            }
+
+          // Next, for the found fields we now make a subsection and set it for the coarser DM
+          ierr = PetscSectionCreateSubsection(section, nfieldsf, subfields, &subsection);CHKERRQ(ierr);
+          ierr = DMSetSection(*(p_ctx->coarser_dm) , subsection);CHKERRQ(ierr);
+          ierr = PetscSectionDestroy(&subsection);CHKERRQ(ierr);
+        }
+
+      // Finally, set the coarser DM
       *(dmc) = *(p_ctx->coarser_dm);
 
       return 0;
@@ -99,7 +158,12 @@ namespace libMesh
       libmesh_assert(dmc);
       libmesh_assert(dmf);
       libmesh_assert(mat);
-      libmesh_assert(vec); // optional scaling (not needed for mg)
+      libmesh_assert(vec); // Optional scaling (not needed for mg)
+
+      // For error checking
+      PetscErrorCode ierr;
+      MPI_Comm comm;
+      PetscObjectGetComm((PetscObject)dmc, &comm);
 
       PetscErrorCode ierr;
 
@@ -107,54 +171,98 @@ namespace libMesh
       MPI_Comm comm;
       PetscObjectGetComm((PetscObject)dmc, &comm);
 
-      // extract our coarse context from the incoming DM
+      // Extract our coarse context from the incoming dm
       void * ctx_c = NULL;
       ierr = DMShellGetContext(dmc, &ctx_c);CHKERRABORT(comm, ierr);
       libmesh_assert(ctx_c);
       PetscDMContext * p_ctx_c = static_cast<PetscDMContext*>(ctx_c);
 
-      // check for projection matrix
+      // Check for existing projection matrix
       libmesh_assert(p_ctx_c->K_interp_ptr);
 
+      // If were doing fieldsplit we need to construct sub projection
+      // matrices. We compare the passed in number of DMs fields to a
+      // global DM in order to determine if a subprojection is needed.
+      // We also get their index sets which determine the entries of the
+      // submat.
       IS * index_set_listc;
       IS * index_set_listf;
-      PetscInt nfieldsc,nfieldsf;
-      PetscSection section;
-      MPI_Comm comm;
+      PetscInt nfieldsc,nfieldsf, nfieldsg;
+      DM * globaldm = p_ctx_c->global_dm;
 
-      PetscObjectGetComm((PetscObject)dmc, &comm);
-      //DMGetSection(dmc, &section);
+      ierr = DMCreateFieldIS(dmc, &nfieldsc, NULL, &index_set_listc);CHKERRABORT(comm, ierr);
+      ierr = DMCreateFieldIS(dmf, &nfieldsf, NULL, &index_set_listf);CHKERRABORT(comm, ierr);
+      ierr = DMCreateFieldIS(*globaldm, &nfieldsg, NULL, NULL);CHKERRABORT(comm, ierr);
 
-      //PetscSectionGetNumFields(section, &nfieldsc);
+      std::cout << "CreateInterp: dm num fieldsc: " << nfieldsc << " dm num fieldsf: " << nfieldsf << std::endl;
 
-      DMCreateFieldIS(dmc, &nfieldsc, NULL, &index_set_listc);
+      // If subfields are identified, were doing FS so we need to create the subProjectionMatrix
+      if (nfieldsc < nfieldsg)
+        {
 
-      DMCreateFieldIS(dmf, &nfieldsf, NULL, &index_set_listf);
+          // Loop over the fields and merge their index sets.
+          IS isfullf, isfullc;
+          for (int i = 0 ; i < nfieldsc ; i++)
+            {
+              //ISSum(index_set_listf[0],index_set_listf[1], &isfullf);
+              //ISSum(index_set_listc[0],index_set_listc[1], &isfullc);
 
-      std::cout <<  "dm num fieldsc: " << nfieldsc << " dm num fieldsf: " << nfieldsf << std::endl;
+              ISExpand(index_set_listf[i], isfullf, &isfullf);
+              ISExpand(index_set_listc[i], isfullc, &isfullc);
+            }
 
+          {
+            PetscInt issize1, issize2, issizefull;
+            ISGetSize(index_set_listf[0], &issize1);
+            ISGetSize(index_set_listf[1], &issize2);
 
-      PetscInt issize1, issize2;
-      ISGetSize(index_set_listf[0], &issize1);
-      ISGetSize(index_set_listf[1], &issize2);
+            PetscInt issize1c, issize2c, issizefullc;
+            ISGetSize(index_set_listc[0], &issize1c);
+            ISGetSize(index_set_listc[1], &issize2c);
 
+            std::cout << "CreateInterp: viewing isC0 " << std::endl;
+            ISView(index_set_listc[0], PETSC_VIEWER_STDOUT_WORLD);
+            std::cout << "CreateInterp: viewing isC1 " << std::endl;
+            ISView(index_set_listc[1], PETSC_VIEWER_STDOUT_WORLD);
 
-      IS isfull;
-      ISSum(index_set_listf[0],index_set_listf[1], &isfull);
+            std::cout << "CreateInterp: viewing isF0 " << std::endl;
+            ISView(index_set_listf[0], PETSC_VIEWER_STDOUT_WORLD);
+            std::cout << "CreateInterp: viewing isF1 " << std::endl;
+            ISView(index_set_listf[1], PETSC_VIEWER_STDOUT_WORLD);
 
-      std::cout <<  "isfine1: " << issize1 << " isfine2: " << issize2 << std::endl;
+            ISGetSize(isfullf, &issizefull);
+            ISGetSize(isfullc, &issizefullc);
 
+            std::cout <<  "CreateInterp isfine1: " << issize1 << " isfine2: " << issize2 << " merged size: " << issizefull << std::endl;
+            std::cout <<  "CreateInterp iscoarse1: " << issize1c << " iscoarse2: " << issize2c << " merged size: " << issizefullc << std::endl;
+          }
 
-      //MatCreateSubMatrix(Mat mat,IS isrow,IS iscol,MatReuse cll,Mat *newmat)
-      Mat newmat;
-      MatCreate(comm, &newmat);
-      MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfull,*index_set_listc, MAT_INITIAL_MATRIX, &newmat);
+          // Now that we have merged the fine and coarse index sets
+          // were ready to make the submatrix and pass it off to PETSc
+          Mat  submat;
+          MatCreate(comm, &submat);
+          MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfullf, isfullc, MAT_INITIAL_MATRIX, &submat);
+          *(mat) = submat;
 
-      *(mat) = newmat;
+          /* werks too
+          Mat submat;
+          p_ctx_c->submat->init(issize1, issize1c,issize1, issize1c);
+          submat = (p_ctx_c->submat->mat());
+          MatCreate(comm, &submat);
+          MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfullf, isfullc, MAT_INITIAL_MATRIX, &submat);
+          *(mat) = submat;
+          */
+        }
+      else // We are not doing fieldsplit, so return entire projection
+        {
+          *(mat) = p_ctx_c->K_interp_ptr->mat();
+        }
+
+      // Vec scaling isnt needed so were done.
       *(vec) = PETSC_NULL;
-
       return 0;
-    }
+
+    } // end __libmesh_petsc_DMCreateInterpolation
 
     //! Function to give PETSc that sets the Restriction Matrix between two DMs
     PetscErrorCode
@@ -186,7 +294,6 @@ namespace libMesh
   } // end extern C functions
 
 
-
 PetscDMWrapper::~PetscDMWrapper()
 {
   this->clear();
@@ -197,16 +304,22 @@ void PetscDMWrapper::clear()
   // This will also destroy the attached PetscSection and PetscSF as well.
   // Destroy doesn't free the memory, but just resets points internally
   // in the struct, so we'd still need to wipe out the memory on our side.
+
+
   // PETSc destroys adjacent DM's so we just pass the coarsest one.
   // Since PetscDMWrapper->clear() gets called in both DiffSolver->clear() and
   // also in ~DiffSolver we check _dms size to avoid double deleting
-  if ( _dms.size() > 0 )
-    DMDestroy( _dms[0].get() );
+
+  // apparently this no longer needed.
+  std::cout << "destroying PetscDMWrapper" << std::endl;
+  //  if ( _dms.size() > 0 )
+  // DMDestroy( _dms[0].get() );
 
   _dms.clear();
   _sections.clear();
   _star_forests.clear();
   _pmtx_vec.clear();
+  //  _submtx_vec.clear();
   _vec_vec.clear();
   _ctx_vec.clear();
 
@@ -314,6 +427,9 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
       ierr = DMShellSetRefine ( dm, __libmesh_petsc_DMRefine );
       CHKERRABORT(system.comm().get(), ierr);
 
+      //      ierr= DMShellSetCreateSubDM(dm, __libmesh_petsc_DMCreateSubDM);
+      //CHKERRABORT(system.comm().get(), ierr);
+
       // Uniformly coarsen if not the coarsest grid and distribute dof info.
       if ( level != 1 )
         {
@@ -349,9 +465,12 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
               (*_ctx_vec[i-1]).finer_dm   = _dms[i].get();
             }
 
-      // Create and attach a sized vector to the current ctx
-      _vec_vec[i-1]->init( _mesh_dof_sizes[i-1] );
-      _ctx_vec[i-1]->current_vec = _vec_vec[i-1].get();
+          // Create and attach a sized vector to the current ctx
+          _vec_vec[i-1]->init( _mesh_dof_sizes[i-1] );
+          _ctx_vec[i-1]->current_vec = _vec_vec[i-1].get();
+
+          // Set a global DM for to be used as reference when using fieldsplit
+          _ctx_vec[i-1]->global_dm = &(this->get_dm(n_levels-1));
         }
 
     } // End context creation
@@ -405,6 +524,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 
           // Create the Interpolation matrix and set its pointer
           _ctx_vec[i-1]->K_interp_ptr = _pmtx_vec[i-1].get();
+          //_ctx_vec[i-1]->submat = _submtx_vec[i-1].get();
 
           unsigned int ndofs_local     = system.get_dof_map().n_dofs_on_processor(system.processor_id());
           unsigned int ndofs_old_first = system.get_dof_map().first_old_dof(system.processor_id());
@@ -416,6 +536,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 
           // Disable Mat destruction since PETSc destroys these for us
           _ctx_vec[i-1]->K_interp_ptr->set_petsc_delete_mat(false);
+          //_ctx_vec[i-1]->submat->set_petsc_delete_mat(false);
 
           // TODO: Projection matrix sparsity pattern?
           //MatSetOption(_ctx_vec[i-1]->K_interp_ptr->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -722,6 +843,9 @@ void PetscDMWrapper::add_dofs_to_section (const System & system,
 
       const Node & node = mesh.node_ref(global_node_id);
 
+      //libMesh::out << "section : global node id: " <<  nmap.first << " with local id: "<< local_node_id << " has dof IDs ";
+      //libMesh::out << node.dof_number(0,0,0)<< " " << node.dof_number(0,1,0) << std::endl;
+
       this->add_dofs_helper(system,node,local_node_id,section);
     }
 
@@ -825,6 +949,7 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
   _star_forests.resize(n_levels);
   _ctx_vec.resize(n_levels);
   _pmtx_vec.resize(n_levels);
+  //_submtx_vec.resize(n_levels);
   _vec_vec.resize(n_levels);
   _mesh_dof_sizes.resize(n_levels);
   _mesh_dof_loc_sizes.resize(n_levels);
@@ -836,6 +961,7 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
       _star_forests[i] = libmesh_make_unique<PetscSF>();
       _ctx_vec[i] = libmesh_make_unique<PetscDMContext>();
       _pmtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>(comm);
+      //_submtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>(comm);
       _vec_vec[i] = libmesh_make_unique<PetscVector<Real>>(comm);
     }
 }

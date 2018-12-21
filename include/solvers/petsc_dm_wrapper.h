@@ -46,6 +46,8 @@ namespace libMesh
     int n_dofs;
     DM * coarser_dm;
     DM * finer_dm;
+    DM * global_dm;
+    //libMesh::PetscMatrix<libMesh::Real > * submat;
     libMesh::PetscMatrix<libMesh::Real > * K_interp_ptr;
     libMesh::PetscMatrix<libMesh::Real > * K_restrict_ptr;
     libMesh::PetscVector<libMesh::Real > * current_vec;
@@ -55,6 +57,8 @@ namespace libMesh
       n_dofs = -12345;
       coarser_dm = NULL;
       finer_dm = NULL;
+      global_dm = NULL;
+      //submat = NULL;
       K_interp_ptr = NULL;
       K_restrict_ptr = NULL;
       current_vec = NULL;
@@ -98,6 +102,9 @@ private:
 
   //! Vector of projection matrixes for all grid levels
   std::vector<std::unique_ptr<PetscMatrix<Real>>> _pmtx_vec;
+
+  //! Vector of subprojection matrixes for use in fieldsplit for all grid levels
+  //std::vector<std::unique_ptr<PetscMatrix<Real>>> _submtx_vec;
 
   //! Vector of internal PetscDM context structs for all grid levels
   std::vector<std::unique_ptr<PetscDMContext>> _ctx_vec;
