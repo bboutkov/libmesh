@@ -55,13 +55,13 @@ namespace libMesh
     PetscDMContext()
     {
       n_dofs = -12345;
-      coarser_dm = NULL;
-      finer_dm = NULL;
-      global_dm = NULL;
-      //submat = NULL;
-      K_interp_ptr = NULL;
-      K_restrict_ptr = NULL;
-      current_vec = NULL;
+      coarser_dm = nullptr;
+      finer_dm = nullptr;
+      global_dm = nullptr;
+      //submat = nullptr;
+      K_interp_ptr = nullptr;
+      K_restrict_ptr = nullptr;
+      current_vec = nullptr;
     }
 
   };
