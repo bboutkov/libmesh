@@ -49,8 +49,13 @@ namespace libMesh
     DM * global_dm;
     //libMesh::PetscMatrix<libMesh::Real > * submat;
     libMesh::PetscMatrix<libMesh::Real > * K_interp_ptr;
+    libMesh::PetscMatrix<libMesh::Real > * K_sub_interp_ptr;
     libMesh::PetscMatrix<libMesh::Real > * K_restrict_ptr;
     libMesh::PetscVector<libMesh::Real > * current_vec;
+    std::vector<IS> is_vec;
+
+    //! Stores local dofs for each var for use in subprojection matrixes
+    std::vector<std::vector<numeric_index_type>> dof_vec;
 
     PetscDMContext()
     {
@@ -60,8 +65,10 @@ namespace libMesh
       global_dm = nullptr;
       //submat = nullptr;
       K_interp_ptr = nullptr;
+      K_sub_interp_ptr = nullptr;
       K_restrict_ptr = nullptr;
       current_vec = nullptr;
+      std::vector<IS> is_vec;
     }
 
   };
@@ -103,6 +110,9 @@ private:
   //! Vector of projection matrixes for all grid levels
   std::vector<std::unique_ptr<PetscMatrix<Real>>> _pmtx_vec;
 
+  //! Vector of sub projection matrixes for all grid levels for fieldsplit
+  std::vector<std::unique_ptr<PetscMatrix<Real>>> _subpmtx_vec;
+
   //! Vector of subprojection matrixes for use in fieldsplit for all grid levels
   //std::vector<std::unique_ptr<PetscMatrix<Real>>> _submtx_vec;
 
@@ -117,7 +127,6 @@ private:
 
   //! Stores n_local_dofs for each grid level, to be used for projection vector sizing
   std::vector<unsigned int> _mesh_dof_loc_sizes;
-
 
   //! Init all the n_mesh_level dependent data structures
   void init_dm_data(unsigned int n_levels, const Parallel::Communicator & comm);
