@@ -163,14 +163,8 @@ namespace libMesh
       libmesh_assert(mat);
       libmesh_assert(vec); // Optional scaling (not needed for mg)
 
-      // For error checking
+      // For error checking get a communicator from incomming DM
       PetscErrorCode ierr;
-      MPI_Comm comm;
-      PetscObjectGetComm((PetscObject)dmc, &comm);
-
-      PetscErrorCode ierr;
-
-      // get a communicator from incomming DM
       MPI_Comm comm;
       PetscObjectGetComm((PetscObject)dmc, &comm);
 
