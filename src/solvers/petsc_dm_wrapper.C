@@ -205,9 +205,7 @@ namespace libMesh
       // If subfields are identified, were doing FS so we need to create the subProjectionMatrix
       if (nfieldsc <= nfieldsg)
         {
-
           // Loop over the fields and merge their index sets.
-          IS isfullf_cat, isfullc_cat, isfullf_sum2, isfullc_sum2, isfullf_sum3, isfullc_sum3;
           std::vector<std::vector<numeric_index_type>> allrows,allcols;
           std::vector<numeric_index_type> rows,cols;
           allrows = p_ctx_f->dof_vec;
@@ -215,111 +213,29 @@ namespace libMesh
 
           static const int n_subfields= nfieldsc;
 
-          //for ISConcat
-          IS * subISsf;
-          PetscMalloc1(n_subfields, &subISsf);
-          IS * subISsc;
-          PetscMalloc1(n_subfields, &subISsc);
-
-          for (int i = 0; i < n_subfields; i++)
-            {
-              //todo: if this works, only get the right subfields via namecheck
-              libMesh::out << "libmesh: checking subIS" << std::endl;
-              //ierr = ISCreate(comm, subISsf[i]);CHKERRQ(ierr);
-              //ierr = ISCreate(comm, subISsc[i]);CHKERRQ(ierr);
-              ierr = ISDuplicate(index_set_listf[i], &subISsf[i]);CHKERRQ(ierr);
-              ierr = ISDuplicate(index_set_listc[i], &subISsc[i]);CHKERRQ(ierr);
-              }
-
-          ierr = ISConcatenate(comm, n_subfields, &*subISsf, &isfullf_cat);CHKERRQ(ierr);
-          ierr = ISConcatenate(comm, n_subfields, &*subISsc, &isfullc_cat);CHKERRQ(ierr);
-
-
-          //ierr = ISCreateGeneral(comm, nfieldsf, NULL, PETSC_OWN_POINTER, &isfullf);CHKERRQ(ierr);
-          //ierr = ISCreateGeneral(comm, nfieldsc, NULL, PETSC_OWN_POINTER, &isfullc);CHKERRQ(ierr);
           if (n_subfields >1 ) {
 
           for (int i = 0 ; i < n_subfields ; i++)
             {
-              ierr = ISSum(index_set_listf[0],index_set_listf[1], &isfullf_sum2);CHKERRQ(ierr);
-              ierr = ISSum(index_set_listc[0],index_set_listc[1], &isfullc_sum2);CHKERRQ(ierr);
-
-              //ierr = ISExpand(isfullf, index_set_listf[i], &isfullf);CHKERRQ(ierr);
-              //ierr = ISExpand(index_set_listf[i], index_set_listf[i], &isfullf);CHKERRQ(ierr);
-              //ierr = ISExpand(isfullc, index_set_listc[i], &isfullc);CHKERRQ(ierr);
-
               //for internal libmesh submat
-              //rows.insert(rows.end(), allrows[i].begin(), allrows[i].end());
-              //cols.insert(cols.end(), allcols[i].begin(), allcols[i].end());
+              rows.insert(rows.end(), allrows[i].begin(), allrows[i].end());
+              cols.insert(cols.end(), allcols[i].begin(), allcols[i].end());
             }
-          rows.insert(rows.end(), allrows[0].begin(), allrows[0].end());
-          cols.insert(cols.end(), allcols[0].begin(), allcols[0].end());
-
-          rows.insert(rows.end(), allrows[1].begin(), allrows[1].end());
-          cols.insert(cols.end(), allcols[1].begin(), allcols[1].end());
-
-          //rows.insert(rows.end(), allrows[2].begin(), allrows[2].end());
-          //cols.insert(cols.end(), allcols[2].begin(), allcols[2].end());
 
           std::sort(rows.begin(),rows.end());
           std::sort(cols.begin(),cols.end());
 
-
-          if (n_subfields >2)
-            {
-              //ghetto fix for global is summing
-              ierr = ISSum(isfullf_sum2, index_set_listf[2], &isfullf_sum3);CHKERRQ(ierr);
-              ierr = ISSum(isfullc_sum2, index_set_listc[2], &isfullc_sum3);CHKERRQ(ierr);
-            }
-          else
-            {
-              isfullf_sum3 = isfullf_sum2;
-              isfullc_sum3 = isfullc_sum2;
-
-            }
-
           }
           else
             {
-              //for internal libmesh submat
-              //rows.insert(rows.end(), allrows[0].begin(), allrows[0].end());
-              //cols.insert(cols.end(), allcols[0].begin(), allcols[0].end());
-
-              isfullf_sum3 = index_set_listf[0];
-              isfullc_sum3 = index_set_listc[0];
+              // only 1 field, do nothing
+              std::sort(rows.begin(),rows.end());
+              std::sort(cols.begin(),cols.end());
 
             }
-          /*
-            PetscInt issize1, issize2, issizefull;
-            ierr = ISGetSize(index_set_listf[0], &issize1);CHKERRQ(ierr);
-            ierr = ISGetSize(index_set_listf[1], &issize2);CHKERRQ(ierr);
-
-            PetscInt issize1c, issize2c, issizefullc;
-            ierr = ISGetSize(index_set_listc[0], &issize1c);CHKERRQ(ierr);
-            ierr = ISGetSize(index_set_listc[1], &issize2c);CHKERRQ(ierr);
-
-            std::cout << "CreateInterp: viewing isC0 " << std::endl;
-            ierr = ISView(index_set_listc[0], PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-            std::cout << "CreateInterp: viewing isC1 " << std::endl;
-            ierr = ISView(index_set_listc[1], PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-
-            std::cout << "CreateInterp: viewing isF0 " << std::endl;
-            ierr = ISView(index_set_listf[0], PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-            std::cout << "CreateInterp: viewing isF1 " << std::endl;
-            ierr = ISView(index_set_listf[1], PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-
-            ierr = ISGetSize(isfullf, &issizefull);CHKERRQ(ierr);
-            ierr = ISGetSize(isfullc, &issizefullc);CHKERRQ(ierr);
-
-            std::cout <<  "CreateInterp isfine1: " << issize1 << " isfine2: " << issize2 << " merged size: " << issizefull << std::endl;
-            std::cout <<  "CreateInterp iscoarse1: " << issize1c << " iscoarse2: " << issize2c << " merged size: " << issizefullc << std::endl;
-          */
-
 
           // Now that we have merged the fine and coarse index sets
           // were ready to make the submatrix and pass it off to PETSc
-
-          // via internal libmesh create submat
           Mat  submat;
           MatCreate(comm, &submat);
           p_ctx_c->K_interp_ptr->create_submatrix (*p_ctx_c->K_sub_interp_ptr, rows, cols);
@@ -328,41 +244,6 @@ namespace libMesh
           std::cout << "CreateInterp: libmesh submat created!!" << std::endl;
           p_ctx_c->K_sub_interp_ptr->print_matlab("libMesh_subP_"+std::to_string(myglobal_counter_int)+".m");
 
-          // via DM-generated concatenated IS (no sort on IS)
-          Mat submat1;
-          MatCreate(comm, &submat1);
-          MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfullf_cat, isfullc_cat, MAT_INITIAL_MATRIX, &submat1);
-          //*(mat) = submat1;
-
-          printf("printing petsc IScat P \n");
-          PetscViewer vm;
-          std::string iscatname= "petsc_IScat_P" + std::to_string(myglobal_counter_int)  + ".m";
-            PetscViewerASCIIOpen(PETSC_COMM_WORLD, iscatname.c_str() , &vm);
-          PetscViewerSetFormat(vm, PETSC_VIEWER_ASCII_MATLAB);
-          ierr = MatView(submat1,vm);CHKERRQ(ierr);
-
-          // DM-generated via ISSum (comes with a sort)
-          Mat submat2;
-          MatCreate(comm, &submat2);
-          MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfullf_sum3, isfullc_sum3, MAT_INITIAL_MATRIX, &submat2);
-          //*(mat) = submat2;
-
-          printf("printing petsc ISsum P \n");
-          PetscViewer vm2;
-          std::string issumname= "petsc_ISsum_P" + std::to_string(myglobal_counter_int)  + ".m";
-          PetscViewerASCIIOpen(PETSC_COMM_WORLD, issumname.c_str(), &vm2);
-          PetscViewerSetFormat(vm2, PETSC_VIEWER_ASCII_MATLAB);
-          ierr = MatView(submat2,vm2);CHKERRQ(ierr);
-
-
-          /* werks too
-          Mat submat;
-          p_ctx_c->submat->init(issize1, issize1c,issize1, issize1c);
-          submat = (p_ctx_c->submat->mat());
-          MatCreate(comm, &submat);
-          MatCreateSubMatrix(p_ctx_c->K_interp_ptr->mat(), isfullf, isfullc, MAT_INITIAL_MATRIX, &submat);
-          *(mat) = submat;
-          */
         }
       else // We are not doing fieldsplit, so return entire projection
         {
@@ -370,6 +251,7 @@ namespace libMesh
         }
 
       myglobal_counter_int ++;
+
       // Vec scaling isnt needed so were done.
       *(vec) = PETSC_NULL;
       return 0;
@@ -417,7 +299,6 @@ void PetscDMWrapper::clear()
   // Destroy doesn't free the memory, but just resets points internally
   // in the struct, so we'd still need to wipe out the memory on our side.
 
-
   // PETSc destroys adjacent DM's so we just pass the coarsest one.
   // Since PetscDMWrapper->clear() gets called in both DiffSolver->clear() and
   // also in ~DiffSolver we check _dms size to avoid double deleting
@@ -431,8 +312,7 @@ void PetscDMWrapper::clear()
   _sections.clear();
   _star_forests.clear();
   _pmtx_vec.clear();
-  //  _submtx_vec.clear();
-  _vec_vec.clear();
+   _vec_vec.clear();
   _ctx_vec.clear();
 
 }
@@ -692,7 +572,6 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
           // Disable Mat destruction since PETSc destroys these for us
           _ctx_vec[i-1]->K_interp_ptr->set_petsc_delete_mat(false);
           _ctx_vec[i-1]->K_sub_interp_ptr->set_petsc_delete_mat(false);
-          //_ctx_vec[i-1]->submat->set_petsc_delete_mat(false);
 
           // TODO: Projection matrix sparsity pattern?
           //MatSetOption(_ctx_vec[i-1]->K_interp_ptr->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -1109,7 +988,6 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
   _ctx_vec.resize(n_levels);
   _pmtx_vec.resize(n_levels);
   _subpmtx_vec.resize(n_levels);
-  //_submtx_vec.resize(n_levels);
   _vec_vec.resize(n_levels);
   _mesh_dof_sizes.resize(n_levels);
   _mesh_dof_loc_sizes.resize(n_levels);
@@ -1122,7 +1000,6 @@ void PetscDMWrapper::init_dm_data(unsigned int n_levels, const Parallel::Communi
       _ctx_vec[i] = libmesh_make_unique<PetscDMContext>();
       _pmtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>(comm);
       _subpmtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>(comm);
-      //_submtx_vec[i]= libmesh_make_unique<PetscMatrix<Real>>(comm);
       _vec_vec[i] = libmesh_make_unique<PetscVector<Real>>(comm);
     }
 }
