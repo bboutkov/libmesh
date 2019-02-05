@@ -329,7 +329,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
   // Theres no need for these code paths while traversing the hierarchy
   mesh.allow_renumbering(false);
   mesh.allow_remote_element_removal(false);
-  mesh.partitioner() = nullptr;
+  //mesh.partitioner() = nullptr;
 
   // First walk over the active local elements and see how many maximum MG levels we can construct
   unsigned int n_levels = 0;
@@ -487,11 +487,6 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
   // DM structures created, now we need projection matrixes if GMG is requested.
   // To prepare for projection creation go to second coarsest mesh so we can utilize
   // old_dof_indices information in the projection creation.
-
-  // We contract here to sidestep the overzealous? asserting in elem_refinement.C:82 of current_child->subactive()
-  // NVM breaks in opt/prof ok in devel...???
-  //mesh.contract();
-
   if (n_levels > 1 )
     {
 
@@ -510,11 +505,6 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 
           _ctx_vec[0]->dof_vec[v] = di;
 
-          /* via petsc
-             IS is = _ctx_vec[i-1]->is_vec[v];
-             ierr = ISCreateLibMesh(system.comm().get(), cast_int<PetscInt>(di.size()), numeric_petsc_cast(&di[0]), PETSC_USE_POINTER, &is);
-             CHKERRABORT(system.comm().get(),ierr);
-          */
         }
 
       START_LOG ("PDM_refine", "PetscDMWrapper");
@@ -547,11 +537,6 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 
               _ctx_vec[i]->dof_vec[v] = di;
 
-              /* via petsc
-                 IS is = _ctx_vec[i-1]->is_vec[v];
-                 ierr = ISCreateLibMesh(system.comm().get(), cast_int<PetscInt>(di.size()), numeric_petsc_cast(&di[0]), PETSC_USE_POINTER, &is);
-                 CHKERRABORT(system.comm().get(),ierr);
-              */
             }
 
           unsigned int ndofs_c = _mesh_dof_sizes[i-1];
@@ -567,7 +552,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
           unsigned int ndofs_old_size  = ndofs_old_end - ndofs_old_first;
 
           // Init and zero the matrix
-          _ctx_vec[i-1]->K_interp_ptr->init(ndofs_f, ndofs_c, ndofs_local, ndofs_old_size);
+          _ctx_vec[i-1]->K_interp_ptr->init(ndofs_f, ndofs_c, ndofs_local, ndofs_old_size, 30 , 20);
 
           // Disable Mat destruction since PETSc destroys these for us
           _ctx_vec[i-1]->K_interp_ptr->set_petsc_delete_mat(false);
