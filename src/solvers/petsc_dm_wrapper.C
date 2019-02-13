@@ -28,6 +28,7 @@
 #include "libmesh/mesh.h"
 #include "libmesh/mesh_base.h"
 #include "libmesh/mesh_refinement.h"
+#include "libmesh/mesh_communication.h"
 #include "libmesh/partitioner.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/elem.h"
@@ -242,7 +243,7 @@ namespace libMesh
           *(mat) = p_ctx_c->K_sub_interp_ptr->mat();
 
           std::cout << "CreateInterp: libmesh submat created!!" << std::endl;
-          p_ctx_c->K_sub_interp_ptr->print_matlab("libMesh_subP_"+std::to_string(myglobal_counter_int)+".m");
+          //p_ctx_c->K_sub_interp_ptr->print_matlab("libMesh_subP_"+std::to_string(myglobal_counter_int)+".m");
 
         }
       else // We are not doing fieldsplit, so return entire projection
@@ -329,7 +330,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
   // Theres no need for these code paths while traversing the hierarchy
   mesh.allow_renumbering(false);
   mesh.allow_remote_element_removal(false);
-  //mesh.partitioner() = nullptr;
+  mesh.partitioner() = nullptr;
 
   // First walk over the active local elements and see how many maximum MG levels we can construct
   unsigned int n_levels = 0;
@@ -499,12 +500,8 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
         {
           std::vector<numeric_index_type> di;
           system.get_dof_map().local_variable_indices(di, system.get_mesh(), v);
-
-
           std::cout << "creating dofs for var: "<< system.variable_name(v).c_str() << std::endl;
-
           _ctx_vec[0]->dof_vec[v] = di;
-
         }
 
       START_LOG ("PDM_refine", "PetscDMWrapper");
@@ -570,7 +567,7 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
           _ctx_vec[i-1]->K_interp_ptr->close();
 
           //Print matrix for projection testing
-          _ctx_vec[i-1]->K_interp_ptr->print_matlab("libmesh_global_P_"+std::to_string(i-1)+".m");
+          //_ctx_vec[i-1]->K_interp_ptr->print_matlab("libmesh_global_P_"+std::to_string(i-1)+".m");
         }
 
       // Move to next grid to make next projection
@@ -590,6 +587,18 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
 
         }
     } // End create transfer operators. System back at the finest grid
+
+  //sparsity fix for partitioner hack.
+  //mesh.contract();
+  DofMap & dof_map = system.get_dof_map();
+  //SparseMatrix< Number > & mat = system.get_matrix(system.name());
+  //system.clear();
+  //system.attach_dof_map(dof_map);
+  //dof_map.reinit(mesh);
+  //dof_map.clear_sparsity();
+  //dof_map.compute_sparsity (mesh);
+  //dof_map.distribute_dofs(mesh);
+  //system.reinit_constraints();
 
   // Lastly, give SNES the finest level DM
   DM & dm = this->get_dm(n_levels-1);
