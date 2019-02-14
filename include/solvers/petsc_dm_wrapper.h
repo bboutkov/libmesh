@@ -44,6 +44,7 @@ namespace libMesh
   struct PetscDMContext
   {
     int n_dofs;
+    int mesh_dim;
     DM * coarser_dm;
     DM * finer_dm;
     DM * global_dm;
@@ -60,6 +61,7 @@ namespace libMesh
     PetscDMContext()
     {
       n_dofs = -12345;
+      mesh_dim = -12345;
       coarser_dm = nullptr;
       finer_dm = nullptr;
       global_dm = nullptr;

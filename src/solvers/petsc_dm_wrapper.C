@@ -21,6 +21,7 @@
 
 #include "libmesh/ignore_warnings.h"
 #include <petscsf.h>
+#include <petsc/private/dmimpl.h>
 #include "libmesh/restore_warnings.h"
 
 #include "libmesh/petsc_dm_wrapper.h"
@@ -48,6 +49,33 @@ namespace libMesh
   //--------------------------------------------------------------------
   extern "C"
   {
+
+    //! Help PETSc identify the finer DM given a dmc
+    PetscErrorCode __libmesh_petsc_DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
+    {
+      PetscErrorCode ierr;
+      MPI_Comm comm;
+      PetscObjectGetComm((PetscObject)dm, &comm);
+
+      // Basically we copy the shell subdm but also need to set the embedding dim.
+      // since this is extern we gotta pull info from the context in the dm
+      void * ctx = NULL;
+      ierr = DMShellGetContext(dm, & ctx);CHKERRABORT(comm, ierr);
+      libmesh_assert(ctx);
+      PetscDMContext * p_ctx = static_cast<PetscDMContext * >(ctx);
+
+
+      if (subdm)
+        {
+          DMShellCreate(PetscObjectComm((PetscObject) dm), subdm);
+
+          // Set the DM embedding dimension to help PetscDS (Discrete System)
+          std::cout << "setting SUBDM embedding to: " << p_ctx->mesh_dim <<std::endl;
+          ierr = DMSetCoordinateDim(*subdm, p_ctx->mesh_dim);
+          CHKERRABORT(comm, ierr);
+        }
+      DMCreateSubDM_Section_Private(dm, numFields, fields, is, subdm);
+    }
 
     //! Help PETSc identify the finer DM given a dmc
     PetscErrorCode __libmesh_petsc_DMRefine(DM dmc, MPI_Comm comm, DM * dmf)
@@ -388,6 +416,11 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
       ierr = DMShellCreate(system.comm().get(), &dm);
       CHKERRABORT(system.comm().get(),ierr);
 
+      // Set the DM embedding dimension to help PetscDS (Discrete System)
+      std::cout << "setting embedding to: " <<  mesh.mesh_dimension() << std::endl;
+      ierr = DMSetCoordinateDim(dm, mesh.mesh_dimension());
+      CHKERRABORT(system.comm().get(),ierr);
+
       // Build the PetscSection and attach it to the DM
       this->build_section(system, section);
       ierr = DMSetDefaultSection(dm, section);
@@ -420,8 +453,8 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
       ierr = DMShellSetRefine ( dm, __libmesh_petsc_DMRefine );
       CHKERRABORT(system.comm().get(), ierr);
 
-      //ierr= DMShellSetCreateSubDM(dm, __libmesh_petsc_DMCreateSubDM);
-      //CHKERRABORT(system.comm().get(), ierr);
+      ierr= DMShellSetCreateSubDM(dm, __libmesh_petsc_DMCreateSubDM);
+      CHKERRABORT(system.comm().get(), ierr);
 
       // Uniformly coarsen if not the coarsest grid and distribute dof info.
       if ( level != 1 )
@@ -441,6 +474,9 @@ void PetscDMWrapper::init_and_attach_petscdm(System & system, SNES & snes)
     {
       if (n_levels > 1 )
         {
+          // Set context dimension
+          (*_ctx_vec[i-1]).mesh_dim = mesh.mesh_dimension();
+
           // Set pointers to surrounding dm levels to help PETSc refine/coarsen
           if ( i == 1 ) // were at the coarsest mesh
             {
