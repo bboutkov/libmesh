@@ -64,6 +64,7 @@ namespace libMesh
       libmesh_assert(ctx);
       PetscDMContext * p_ctx = static_cast<PetscDMContext * >(ctx);
 
+      printf("Petsc: CreateSubDM_Shell\n ");
 
       if (subdm)
         {
@@ -74,6 +75,29 @@ namespace libMesh
           ierr = DMSetCoordinateDim(*subdm, p_ctx->mesh_dim);
           CHKERRABORT(comm, ierr);
         }
+
+      if (dm->ops->coarsen) {
+        ierr = DMShellSetCoarsen(*subdm, dm->ops->coarsen);CHKERRQ(ierr);
+        //(*subdm)->ops->coarsen = dm->ops->coarsen;
+      }
+      if (dm->ops->refine) {
+        ierr = DMShellSetRefine(*subdm, dm->ops->refine);CHKERRQ(ierr);
+        //(*subdm)->ops->refine = dm->ops->refine;
+      }
+      if (dm->ops->createinterpolation) {
+        ierr = DMShellSetCreateInterpolation(*subdm, dm->ops->createinterpolation);CHKERRQ(ierr);
+        //(*subdm)->ops->createinterpolation = dm->ops->createinterpolation;
+      }
+      if (dm->ops->createrestriction) {
+        ierr = DMShellSetCreateRestriction(*subdm, dm->ops->createrestriction);CHKERRQ(ierr);
+        //(*subdm)->ops->createinterpolation = dm->ops->createinterpolation;
+      }
+
+      ierr = DMShellGetContext(dm, &ctx);CHKERRQ(ierr);
+      if (ctx) {
+        DMShellSetContext(*subdm, ctx);CHKERRQ(ierr);
+      }
+
       DMCreateSubDM_Section_Private(dm, numFields, fields, is, subdm);
     }
 
