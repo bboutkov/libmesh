@@ -232,7 +232,7 @@ namespace libMesh
       std::cout << "CreateInterp: dm num fieldsc: " << nfieldsc << " dm num fieldsf: " << nfieldsf << std::endl;
 
       // If subfields are identified, were doing FS so we need to create the subProjectionMatrix
-      if (nfieldsc <= nfieldsg)
+      if (nfieldsc < nfieldsg)
         {
           // Loop over the fields and merge their index sets.
           std::vector<std::vector<numeric_index_type>> allrows,allcols;
@@ -240,7 +240,7 @@ namespace libMesh
           allrows = p_ctx_f->dof_vec;
           allcols = p_ctx_c->dof_vec;
 
-          static const int n_subfields= nfieldsc;
+          static const int n_subfields = nfieldsc;
 
           if (n_subfields >1 ) {
 
